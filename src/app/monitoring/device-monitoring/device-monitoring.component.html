@@ -116,10 +116,13 @@
                                 </div>
                             </div>
 
-                            <!-- Mostrar device ID si solo hay uno -->
-                            <div class="metric" *ngIf="getActiveSubscriptions(residentData).length === 1">
+                            <!-- Mostrar device/sensor ID (muestra sensorId si backend usa ese campo) -->
+                            <div class="metric">
                                 <div class="metric-label">{{ translate('device_id') }}</div>
-                                <div class="metric-value">{{ getActiveSubscription(residentData)?.deviceId }}</div>
+                                <div class="metric-value">
+                                    <!-- Preferir suscripción activa, sino la primera -->
+                                    {{ (getIdFromSubscription(getActiveSubscription(residentData) || residentData.subscriptions[0]) ?? 'N/A') }}
+                                </div>
                             </div>
 
                             <!-- Resumen de calidad actual -->
@@ -207,27 +210,27 @@
                                     <i class="fa fa-tint"></i>
                                 </div>
                                 <div class="sensor-info">
-                                    <h5>{{ translate('device') }} #{{ subscription.deviceId }}</h5>
+                                    <h5>{{ translate('device') }} #{{ subscription.deviceId ?? subscription.sensorId }}</h5>
                                     <span class="sensor-status" [ngClass]="getStatusClass(subscription.status)">
                                         {{ getStatusText(subscription.status) }}
                                     </span>
                                 </div>
                                 <div class="sensor-activity">
-                                    <span class="activity-indicator"
-                                          [ngClass]="hasDeviceActivity(subscription.deviceId) ? 'active' : 'inactive'">
-                                        <i [class]="hasDeviceActivity(subscription.deviceId) ? 'fa fa-check-circle' : 'fa fa-exclamation-circle'"></i>
-                                    </span>
+                                                                        <span class="activity-indicator"
+                                                                                    [ngClass]="hasDeviceActivity(subscription.deviceId ?? subscription.sensorId) ? 'active' : 'inactive'">
+                                                                                <i [class]="hasDeviceActivity(subscription.deviceId ?? subscription.sensorId) ? 'fa fa-check-circle' : 'fa fa-exclamation-circle'"></i>
+                                                                        </span>
                                 </div>
                             </div>
 
                             <div class="sensor-summary" *ngIf="subscription.status.toLowerCase() === 'active'">
-                                <div class="summary-item" *ngIf="getLatestEventForDevice(subscription.deviceId) as latestEvent">
+                                <div class="summary-item" *ngIf="getLatestEventForDevice(subscription.deviceId ?? subscription.sensorId) as latestEvent">
                                     <span class="summary-label">{{ translate('latest_quality') }}:</span>
                                     <span class="summary-value" [ngClass]="getQualityClass(latestEvent.qualityValue)">
                                         {{ translateQualityValue(latestEvent.qualityValue) }}
                                     </span>
                                 </div>
-                                <div class="summary-item" *ngIf="getLatestEventForDevice(subscription.deviceId) as latestEvent">
+                                <div class="summary-item" *ngIf="getLatestEventForDevice(subscription.deviceId ?? subscription.sensorId) as latestEvent">
                                     <span class="summary-label">{{ translate('water_level') }}:</span>
                                                     <span class="summary-value" [ngClass]="getLevelClass(latestEvent.levelValue)">
                   {{ latestEvent.levelValue | number:'1.2-2' }}%
@@ -236,7 +239,7 @@
                                 <div class="summary-item">
                                     <span class="summary-label">{{ translate('total_events') }}:</span>
                                     <span class="summary-value events-count">
-                                        {{ getDeviceEvents(subscription.deviceId).length }}
+                                        {{ getDeviceEvents(subscription.deviceId ?? subscription.sensorId).length }}
                                     </span>
                                 </div>
                             </div>
@@ -278,9 +281,9 @@
                     <i class="fa fa-arrow-left"></i>
                     <span>{{ translate('back') }}</span>
                 </button>
-                <h2 class="modal-title">
+                                    <h2 class="modal-title">
                     <i class="fa fa-chart-area"></i>
-                    {{ translate('device_details') }} #{{ selectedDevice?.deviceId }}
+                    {{ translate('device_details') }} #{{ selectedDevice?.deviceId ?? selectedDevice?.sensorId }}
                     <span *ngIf="selectedResident"> - {{ selectedResident.resident.firstName }} {{ selectedResident.resident.lastName }}</span>
                 </h2>
                 <button class="btn-close" (click)="closeModal()">
@@ -319,7 +322,7 @@
                         <div class="detail-grid">
                             <div class="detail-item">
                                 <span class="detail-label">{{ translate('device_id') }}</span>
-                                <span class="detail-value">{{ selectedDevice.deviceId }}</span>
+                                <span class="detail-value">{{ selectedDevice.deviceId ?? selectedDevice.sensorId }}</span>
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">{{ translate('subscription_status') }}</span>
@@ -344,7 +347,7 @@
                 </div>
                                     <!-- Eventos del dispositivo específico -->
                     <div class="detail-section">
-                        <h3>{{ translate('device_events') }} ({{ getDeviceEvents(selectedDevice.deviceId).length }})</h3>
+                        <h3>{{ translate('device_events') }} ({{ getDeviceEvents(selectedDevice.deviceId ?? selectedDevice.sensorId).length }})</h3>
                         <div class="events-table-container">
                             <table class="events-table">
                                 <thead>
@@ -356,8 +359,8 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr *ngFor="let event of getDeviceEvents(selectedDevice.deviceId); let i = index"
-                                        [class.latest-event]="i === getDeviceEvents(selectedDevice.deviceId).length - 1">
+                                    <tr *ngFor="let event of getDeviceEvents(selectedDevice.deviceId ?? selectedDevice.sensorId); let i = index"
+                                        [class.latest-event]="i === getDeviceEvents(selectedDevice.deviceId ?? selectedDevice.sensorId).length - 1">
                                         <td>{{ event.id }}</td>
                                         <td>
                                             <span class="event-type" [ngClass]="getEventTypeClass(event.eventType)">
@@ -379,7 +382,7 @@
                             </table>
                         </div>
 
-                        <div *ngIf="getDeviceEvents(selectedDevice.deviceId).length === 0" class="no-events">
+                        <div *ngIf="getDeviceEvents(selectedDevice.deviceId ?? selectedDevice.sensorId).length === 0" class="no-events">
                             <div class="no-events-icon">
                                 <i class="fa fa-chart-line"></i>
                             </div>

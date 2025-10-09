@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, forkJoin, of } from 'rxjs';
+import { Observable, forkJoin, of, throwError } from 'rxjs';
 import { map, switchMap, catchError } from 'rxjs/operators';
 import { BaseService } from '../../../shared/services/base.service';
 import { ResidentData, SubscriptionData, SensorEvent, ResidentSensorData } from '../model/device-data.model';
@@ -16,8 +16,14 @@ export class DeviceDataService extends BaseService<any> {
 
   getProvidersProfile(): Observable<any> {
     console.log('=== SERVICIO: getProvidersProfile() ===');
-    console.log('URL:', `${this.basePath}providers/{providerId}/profiles`);
-    return this.http.get<any>(`${this.basePath}providers/{providerId}/profiles`, this.httpOptions);
+    const storedUser = localStorage.getItem('auth_user');
+    if (!storedUser) {
+      console.warn('No auth_user in localStorage when calling getProvidersProfile()');
+      return throwError(() => new Error('No user found in localStorage'));
+    }
+    const user = JSON.parse(storedUser);
+    console.log('Calling provider profile for user:', user);
+    return this.http.get<any>(`${this.basePath}providers/${user.id}/profiles`, this.httpOptions);
   }
 
   getResidentsByProvider(providerId: number): Observable<ResidentData[]> {
@@ -38,6 +44,12 @@ export class DeviceDataService extends BaseService<any> {
   }
 
   getSensorEvents(deviceId: number): Observable<SensorEvent[]> {
+    if (deviceId === null || deviceId === undefined || isNaN(deviceId as any)) {
+      console.warn('getSensorEvents called with invalid deviceId:', deviceId);
+      // Return an empty array observable instead of calling an endpoint with 'undefined'
+      return of([] as SensorEvent[]);
+    }
+
     const url = `${this.basePath}devices/${deviceId}/events`;
     return this.http.get<SensorEvent[]>(url, this.httpOptions).pipe(
       catchError(this.handleError)
@@ -78,13 +90,38 @@ export class DeviceDataService extends BaseService<any> {
         const residentDataObservables = residents.map(resident =>
           this.getSubscriptionByResident(resident.id).pipe(
             switchMap(subscriptions => {
-              if (subscriptions && subscriptions.length > 0) {
-                // Obtener eventos de todos los sensores del residente
-                const sensorEventObservables = subscriptions.map(subscription =>
-                  this.getSensorEvents(subscription.deviceId).pipe(
+                if (subscriptions && subscriptions.length > 0) {
+                // Filtrar suscripciones que tengan deviceId o sensorId válido
+                const validSubscriptions = subscriptions.filter(sub => {
+                  const idToUse = (sub as any).deviceId ?? (sub as any).sensorId;
+                  return sub && idToUse !== null && idToUse !== undefined && !isNaN(idToUse as any);
+                });
+                if (!validSubscriptions || validSubscriptions.length === 0) {
+                  console.warn(`No valid deviceId/sensorId found for resident ${resident.id}. Subscriptions:`, subscriptions);
+                  return of({
+                    resident,
+                    subscriptions: subscriptions,
+                    sensorEvents: []
+                  } as ResidentSensorData);
+                }
+
+                // Obtener eventos de todos los sensores del residente (usar deviceId o sensorId)
+                const sensorEventObservables = validSubscriptions.map(subscription => {
+                  const idToUse = (subscription as any).deviceId ?? (subscription as any).sensorId;
+                  console.log(`Fetching events for resident ${resident.id} using id:`, idToUse);
+                  return this.getSensorEvents(idToUse).pipe(
                     catchError(() => of([]))
-                  )
-                );
+                  );
+                });
+
+                // Si no hay observables (defensivo), retornar datos vacíos
+                if (sensorEventObservables.length === 0) {
+                  return of({
+                    resident,
+                    subscriptions: subscriptions,
+                    sensorEvents: []
+                  } as ResidentSensorData);
+                }
 
                 return forkJoin(sensorEventObservables).pipe(
                   map(allSensorEvents => {

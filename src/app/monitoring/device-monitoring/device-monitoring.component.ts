@@ -238,31 +238,39 @@ export class DeviceMonitoringComponent implements OnInit {
   }
 
   // Método para obtener eventos específicos de un dispositivo de un residente específico
-  getDeviceEventsForResident(deviceId: number, residentData: ResidentSensorData): SensorEvent[] {
-    return residentData.sensorEvents.filter((event: SensorEvent) => event.deviceId === deviceId);
+  getDeviceEventsForResident(deviceId: number | undefined, residentData: ResidentSensorData): SensorEvent[] {
+    if (deviceId === null || deviceId === undefined) return [];
+    return residentData.sensorEvents.filter((event: SensorEvent) => ((event.deviceId ?? (event as any).sensorId) === deviceId));
   }
 
   // Método para obtener el último evento de un dispositivo específico de un residente específico
-  getLatestEventForDeviceOfResident(deviceId: number, residentData: ResidentSensorData): SensorEvent | null {
+  getLatestEventForDeviceOfResident(deviceId: number | undefined, residentData: ResidentSensorData): SensorEvent | null {
     const events = this.getDeviceEventsForResident(deviceId, residentData);
     return events.length > 0 ? events[events.length - 1] : null;
   }
 
   // Método para obtener eventos específicos de un dispositivo
-  getDeviceEvents(deviceId: number): SensorEvent[] {
+  getDeviceEvents(deviceId: number | undefined): SensorEvent[] {
     if (!this.selectedResident) return [];
-    return this.selectedResident.sensorEvents.filter((event: SensorEvent) => event.deviceId === deviceId);
+    if (deviceId === null || deviceId === undefined) return [];
+    return this.selectedResident.sensorEvents.filter((event: SensorEvent) => ((event.deviceId ?? (event as any).sensorId) === deviceId));
   }
 
   // Método para obtener el último evento de un dispositivo específico
-  getLatestEventForDevice(deviceId: number): SensorEvent | null {
+  getLatestEventForDevice(deviceId: number | undefined): SensorEvent | null {
     const events = this.getDeviceEvents(deviceId);
     return events.length > 0 ? events[events.length - 1] : null;
   }
 
   // Método para verificar si un dispositivo tiene eventos recientes
-  hasDeviceActivity(deviceId: number): boolean {
+  hasDeviceActivity(deviceId: number | undefined): boolean {
     return this.getDeviceEvents(deviceId).length > 0;
+  }
+
+  // Helper público: obtiene el id válido desde una suscripción (deviceId o sensorId)
+  public getIdFromSubscription(sub: any): number | undefined {
+    if (!sub) return undefined;
+    return (sub.deviceId ?? sub.sensorId) as number | undefined;
   }
 
   // Nuevas funciones para el resumen inteligente del card
@@ -274,7 +282,8 @@ export class DeviceMonitoringComponent implements OnInit {
 
     const qualities: string[] = [];
     activeSubscriptions.forEach((subscription: any) => {
-      const latestEvent = this.getLatestEventForDeviceOfResident(subscription.deviceId, residentData);
+      const id = this.getIdFromSubscription(subscription);
+      const latestEvent = this.getLatestEventForDeviceOfResident(id, residentData);
       if (latestEvent) {
         qualities.push(latestEvent.qualityValue);
       }
@@ -304,7 +313,8 @@ export class DeviceMonitoringComponent implements OnInit {
     const activeSubscriptions = this.getActiveSubscriptions(residentData);
 
     return activeSubscriptions.some((subscription: any) => {
-      const latestEvent = this.getLatestEventForDeviceOfResident(subscription.deviceId, residentData);
+      const id = this.getIdFromSubscription(subscription);
+      const latestEvent = this.getLatestEventForDeviceOfResident(id, residentData);
       if (latestEvent) {
         const levelValue = typeof latestEvent.levelValue === 'string' ?
           parseFloat(latestEvent.levelValue) : latestEvent.levelValue;
@@ -321,7 +331,8 @@ export class DeviceMonitoringComponent implements OnInit {
     const activeSubscriptions = this.getActiveSubscriptions(residentData);
 
     return activeSubscriptions.filter((subscription: any) => {
-      const latestEvent = this.getLatestEventForDeviceOfResident(subscription.deviceId, residentData);
+      const id = this.getIdFromSubscription(subscription);
+      const latestEvent = this.getLatestEventForDeviceOfResident(id, residentData);
       if (latestEvent) {
         const levelValue = typeof latestEvent.levelValue === 'string' ?
           parseFloat(latestEvent.levelValue) : latestEvent.levelValue;
@@ -362,7 +373,8 @@ export class DeviceMonitoringComponent implements OnInit {
 
     const qualities: string[] = [];
     activeSubscriptions.forEach((subscription: any) => {
-      const latestEvent = this.getLatestEventForDeviceOfResident(subscription.deviceId, residentData);
+      const id = this.getIdFromSubscription(subscription);
+      const latestEvent = this.getLatestEventForDeviceOfResident(id, residentData);
       if (latestEvent) {
         qualities.push(latestEvent.qualityValue);
       }
@@ -404,7 +416,8 @@ export class DeviceMonitoringComponent implements OnInit {
 
     const qualities: string[] = [];
     activeSubscriptions.forEach((subscription: any) => {
-      const latestEvent = this.getLatestEventForDeviceOfResident(subscription.deviceId, residentData);
+      const id = this.getIdFromSubscription(subscription);
+      const latestEvent = this.getLatestEventForDeviceOfResident(id, residentData);
       if (latestEvent) {
         qualities.push(latestEvent.qualityValue);
       }
@@ -426,7 +439,8 @@ export class DeviceMonitoringComponent implements OnInit {
 
     const qualities: string[] = [];
     activeSubscriptions.forEach((subscription: any) => {
-      const latestEvent = this.getLatestEventForDeviceOfResident(subscription.deviceId, residentData);
+      const id = this.getIdFromSubscription(subscription);
+      const latestEvent = this.getLatestEventForDeviceOfResident(id, residentData);
       if (latestEvent) {
         qualities.push(latestEvent.qualityValue);
       }
@@ -448,7 +462,8 @@ export class DeviceMonitoringComponent implements OnInit {
 
     const levels: number[] = [];
     activeSubscriptions.forEach((subscription: any) => {
-      const latestEvent = this.getLatestEventForDeviceOfResident(subscription.deviceId, residentData);
+      const id = this.getIdFromSubscription(subscription);
+      const latestEvent = this.getLatestEventForDeviceOfResident(id, residentData);
       if (latestEvent) {
         const levelValue = typeof latestEvent.levelValue === 'string' ?
           parseFloat(latestEvent.levelValue) : latestEvent.levelValue;

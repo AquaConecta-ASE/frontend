@@ -16,7 +16,9 @@ export interface SubscriptionData {
   startDate: string;
   endDate: string;
   status: string;
-  deviceId: number;
+  // backend may use either deviceId or sensorId; accept both (sensorId is used by your backend)
+  deviceId?: number;
+  sensorId?: number;
   residentId: number;
 }
 
@@ -25,7 +27,9 @@ export interface SensorEvent {
   eventType: string;
   qualityValue: string;
   levelValue: string;
-  deviceId: number;
+  // sometimes events reference the sensorId instead of deviceId
+  deviceId?: number;
+  sensorId?: number;
 }
 
 export interface ResidentSensorData {

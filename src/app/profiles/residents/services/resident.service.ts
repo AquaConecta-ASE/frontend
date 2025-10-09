@@ -19,7 +19,12 @@ export class ResidentService extends BaseService<Resident> {
   }
 
   getProvidersProfile(): Observable<any> {
-    return this.http.get<any>(`${this.basePath}providers/{providerId}/profiles`, this.httpOptions);
+    const storedUser = localStorage.getItem('auth_user');
+    if (!storedUser) {
+      return throwError(() => new Error('No user found in localStorage'));
+    }
+    const user = JSON.parse(storedUser);
+    return this.http.get<any>(`${this.basePath}providers/${user.id}/profiles`, this.httpOptions);
   }
 
   // Método que obtiene residentes por provider usando el perfil
