@@ -46,6 +46,7 @@ export class HomeComponent implements OnInit {
     { path: '/report', name: 'Lista de Reportes' },
     { path: '/providers', name: 'Lista de proveedores' },
     { path: '/provider', name: 'Detalles del proveedor' },
+    { path: '/predictive-analytics', name: 'Predictive Analytics' },
   ];
   constructor(
     private sensordataApiService: WaterRequestApiService,
