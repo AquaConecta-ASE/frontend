@@ -1,0 +1,88 @@
+<app-header-content></app-header-content>
+
+<div class="pa-container">
+  <div class="pa-header">
+    <h1>Predictive Analytics</h1>
+    <p>Predicciones de consumo y recomendaciones de reabastecimiento para tus residentes.</p>
+  </div>
+
+  <div class="pa-controls">
+    <div class="time-windows">
+      <button (click)="changeWindow('7d')">7d</button>
+      <button (click)="changeWindow('30d')" class="active">30d</button>
+      <button (click)="changeWindow('90d')">90d</button>
+    </div>
+    <div class="filters">
+      <label>Residente:</label>
+      <select (change)="selectResident($any($event.target).value || null)">
+        <option value="">Todos</option>
+        <option *ngFor="let p of predictions" [value]="p.residentId + ''">{{p.residentName || ('Resident ' + p.residentId)}}</option>
+      </select>
+      <label style="margin-left:12px; display:flex; align-items:center">
+        <input type="checkbox" [checked]="showRemaining" (change)="toggleRemaining($any($event.target).checked)" style="margin-right:6px" />
+        Mostrar stock restante (L)
+      </label>
+      <div class="selected-legend" *ngIf="selectedResidentId != null" style="margin-left:12px; font-size:0.9rem; color:#64748b">
+        Mostrando: {{ selectedResidentName() }}
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="isLoading" class="pa-loading">Cargando predicciones...</div>
+  <div *ngIf="loadError" class="pa-error">{{ loadError }}</div>
+
+  <div *ngIf="!isLoading && !loadError" class="pa-content">
+    <div class="pa-summary-cards">
+      <!-- Resumenes rápidos: total predicciones, promedio consumo, alertas recomendadas -->
+      <div class="card">
+        <h3>Total predictions</h3>
+        <p>{{ predictions.length }}</p>
+      </div>
+      <div class="card">
+        <h3>Avg predicted consumption</h3>
+        <p>{{ avgPredictedConsumption() | number:'1.0-2' }}</p>
+      </div>
+      <div class="card">
+        <h3>Recomm. auto-restocks</h3>
+        <p>{{ autoRestockCount() }}</p>
+      </div>
+    </div>
+
+    <div class="pa-charts">
+      <div class="chart-wrapper" style="height:240px;">
+        <canvas #paChart></canvas>
+      </div>
+    </div>
+
+    <div class="pa-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Resident</th>
+            <th>Sensor ID</th>
+            <th>Predicted Consumption</th>
+            <th>Restock Prob.</th>
+            <th>Recommended</th>
+            <th>Days until empty</th>
+            <th>Model confidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of predictions | slice:0:100">
+            <td>{{ p.residentName || ('Resident ' + p.residentId) }}</td>
+            <td>{{ p.sensorId ?? p.deviceId ?? 'N/A' }}</td>
+            <td>{{ p.predictedConsumption | number:'1.0-2' }}</td>
+            <td>{{ (p.restockProbability ?? 0) | percent:'1.0-0' }}</td>
+            <td>
+              <span class="badge-{{ p.recommendedAction || 'none' }}" style="padding:4px 8px; border-radius:8px; font-weight:600">
+                {{ p.recommendedAction || 'none' }}
+              </span>
+            </td>
+            <td>{{ p.predictedDaysUntilEmpty ?? '-' }}</td>
+            <td>{{ formatConfidence(p) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

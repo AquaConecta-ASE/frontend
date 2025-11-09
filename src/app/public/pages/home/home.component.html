@@ -115,6 +115,26 @@
         </div>
       </div>
 
+      <!-- Predictive Analytics Card -->
+      <div class="dashboard-card" routerLink="/predictive-analytics">        <div class="card-header">
+          <div class="card-icon predictive">📈</div>
+          <h3 class="card-title">{{ translate('predictive_analytics') }}</h3>
+        </div>
+        <div class="card-content">
+          <div class="card-info">
+            <p class="card-description">
+              {{ translate('predictive_analytics_description') || 'Predicciones de consumo y alertas' }}
+            </p>
+            <div class="status-badge status-info">{{ translate('analytics') || 'Analytics' }}</div>
+            <a class="card-action">{{ translate('view_predictive_analytics') || 'Ver predicciones' }}</a>
+          </div>
+          <div class="card-metric">
+            <span class="card-number">-</span>
+            <span class="card-label">{{ translate('predictive_analytics') }}</span>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
