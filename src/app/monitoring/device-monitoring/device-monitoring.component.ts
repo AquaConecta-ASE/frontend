@@ -77,10 +77,18 @@ export class DeviceMonitoringComponent implements OnInit {
     this.modalStep = 'devices';
   }
 
-  @HostListener('document:keydown.escape', ['$event'])
-  onEscapeKey(event: KeyboardEvent): void {
-    if (this.isModalOpen) {
-      this.closeModal();
+  // Listen to global keydown events. Use Event in the parameter because
+  // HostListener provides a general Event type; cast to KeyboardEvent at runtime
+  // to access keyboard-specific properties safely.
+  @HostListener('document:keydown', ['$event'])
+  onEscapeKey(event: Event): void {
+    const ke = event as KeyboardEvent;
+    // Guard: only handle real keyboard events and the Escape key
+    if (!ke || typeof ke.key !== 'string') return;
+    if (ke.key === 'Escape' || ke.key === 'Esc') {
+      if (this.isModalOpen) {
+        this.closeModal();
+      }
     }
   }
 

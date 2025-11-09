@@ -11,7 +11,7 @@ import {ResidentSummaryComponent} from './profiles/residents/presentation/reside
 import {ProviderSummaryComponent} from './profiles/providers/components/provider-summary/provider-summary.component';
 import {ProviderItemComponent} from './profiles/providers/components/provider-item/provider-item.component';
 import {DeviceMonitoringComponent} from './monitoring/device-monitoring/device-monitoring.component';
-import { PredictiveAnalyticsComponent } from './analytics/predictive-analytics/predictive-analytics.component';
+import { PredictiveAnalyticsComponent } from './analytics/predictive-analytics/components/predictive-analytics.component';
 import {LoginComponent} from './iam/presentation/pages/login/login.component';
 import {SignupComponent} from './iam/presentation/pages/signup/signup.component';
 import {IssueSummaryComponent} from './serviceRequests/issue-reports/components/issue-summary/issue-summary.component';
