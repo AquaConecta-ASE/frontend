@@ -1,29 +1,23 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, forkJoin, of, throwError } from 'rxjs';
 import { map, switchMap, catchError } from 'rxjs/operators';
-import { BaseService } from '../../../shared/services/base.service';
 import { ResidentData, SubscriptionData, SensorEvent, ResidentSensorData } from '../model/device-data.model';
+import { ProviderApiServiceService } from './provider-api.service.service';
+import { environment } from '../../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
-export class DeviceDataService extends BaseService<any> {
-
-  constructor(http: HttpClient) {
-    super(http);
-  }
+export class DeviceDataService {
+  private providerService = inject(ProviderApiServiceService);
+  private http = inject(HttpClient);
+  protected basePath = environment.serverBasePath;
 
   getProvidersProfile(): Observable<any> {
     console.log('=== SERVICIO: getProvidersProfile() ===');
-    const storedUser = localStorage.getItem('auth_user');
-    if (!storedUser) {
-      console.warn('No auth_user in localStorage when calling getProvidersProfile()');
-      return throwError(() => new Error('No user found in localStorage'));
-    }
-    const user = JSON.parse(storedUser);
-    console.log('Calling provider profile for user:', user);
-    return this.http.get<any>(`${this.basePath}providers/${user.id}/profiles`, this.httpOptions);
+    // Usar el nuevo método que obtiene el perfil por token JWT
+    return this.providerService.getMyProfile();
   }
 
   getResidentsByProvider(providerId: number): Observable<ResidentData[]> {
@@ -31,15 +25,21 @@ export class DeviceDataService extends BaseService<any> {
     console.log('Provider ID:', providerId);
     const url = `${this.basePath}residents`;
     console.log('URL:', url);
-    return this.http.get<ResidentData[]>(url, this.httpOptions).pipe(
-      catchError(this.handleError)
+    return this.http.get<ResidentData[]>(url).pipe(
+      catchError(error => {
+        console.error('Error in getResidentsByProvider:', error);
+        return throwError(() => error);
+      })
     );
   }
 
   getSubscriptionByResident(residentId: number): Observable<SubscriptionData[]> {
     const url = `${this.basePath}residents/${residentId}/subscriptions`;
-    return this.http.get<SubscriptionData[]>(url, this.httpOptions).pipe(
-      catchError(this.handleError)
+    return this.http.get<SubscriptionData[]>(url).pipe(
+      catchError(error => {
+        console.error('Error in getSubscriptionByResident:', error);
+        return throwError(() => error);
+      })
     );
   }
 
@@ -51,8 +51,11 @@ export class DeviceDataService extends BaseService<any> {
     }
 
     const url = `${this.basePath}devices/${deviceId}/events`;
-    return this.http.get<SensorEvent[]>(url, this.httpOptions).pipe(
-      catchError(this.handleError)
+    return this.http.get<SensorEvent[]>(url).pipe(
+      catchError(error => {
+        console.error('Error in getSensorEvents:', error);
+        return throwError(() => error);
+      })
     );
   }
 

@@ -137,11 +137,12 @@ export class ProviderSummaryComponent implements OnInit{
   private loadProviderData(): void {
     console.log('Cargando datos como PROVIDER');
 
-    // Proveedor solo puede ver su propio perfil
-    this.providerService.getProvidersProfile().subscribe(
+    // Proveedor solo puede ver su propio perfil - usar el nuevo método
+    this.providerService.getMyProfile().subscribe(
       (provider: any) => {
         this.provider = provider;
-        console.log('Provider profile (PROVIDER):', this.provider);
+        console.log('Provider profile (PROVIDER) con ID correcto de BD:', this.provider);
+        console.log('ID del provider:', this.provider.id);
       },
       (error: any) => {
         console.error('Error fetching provider profile (PROVIDER):', error);
