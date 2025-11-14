@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -14,6 +14,7 @@ import { LanguageService } from '../../../shared/services/language.service';
 import { TranslationService } from '../../../shared/services/translation.service';
 import { LanguageToggleComponent } from '../../../shared/components/language-toggle/language-toggle.component';
 import {DeviceDataService} from '../../../profiles/providers/services/device-data.service';
+import { AuthService as Auth0Service } from '@auth0/auth0-angular';
 
 @Component({
   selector: 'app-home',
@@ -28,6 +29,9 @@ export class HomeComponent implements OnInit {
   userRole: string | null = null;
   showProfileDropdown: boolean = false;
   selectedLanguage: string = 'en';
+  
+  // Inject Auth0 service
+  private auth0 = inject(Auth0Service);
 
   // Dashboard metrics
   waterRequestsCount: number = 0;
@@ -46,7 +50,6 @@ export class HomeComponent implements OnInit {
     { path: '/report', name: 'Lista de Reportes' },
     { path: '/providers', name: 'Lista de proveedores' },
     { path: '/provider', name: 'Detalles del proveedor' },
-    { path: '/predictive-analytics', name: 'Predictive Analytics' },
   ];
   constructor(
     private sensordataApiService: WaterRequestApiService,
@@ -88,11 +91,35 @@ export class HomeComponent implements OnInit {
 
   private loadUsername(): void {
     const storedUser = localStorage.getItem('auth_user');
+    const authMethod = localStorage.getItem('auth_method');
+    
     if (storedUser) {
       try {
         const user = JSON.parse(storedUser);
-        this.username = user?.username || null;
-        this.isAdmin = this.username === "admin";
+        this.username = user?.username || user?.name || user?.email || null;
+        
+        // Detectar si es admin de diferentes formas
+        if (authMethod === 'auth0') {
+          // Para Auth0, verificar el rol del custom claim
+          const userRole = user?.role || localStorage.getItem('user_role');
+          console.log('Auth0 - Rol del usuario:', userRole);
+          this.isAdmin = userRole === 'admin' || userRole === 'Administrator' || userRole === 'ROLE_ADMIN';
+          
+          // También verificar en el array de roles
+          if (user?.roles && Array.isArray(user.roles)) {
+            this.isAdmin = this.isAdmin || user.roles.some((r: string) => 
+              r.toLowerCase().includes('admin')
+            );
+          }
+        } else {
+          // Para login tradicional
+          this.isAdmin = this.username === "admin";
+        }
+        
+        console.log('Usuario:', this.username);
+        console.log('Es admin:', this.isAdmin);
+        console.log('Método de auth:', authMethod);
+        
         if(this.isAdmin) {
           this.userRole = user?.role || 'Administrator';
         } else {
@@ -123,30 +150,50 @@ export class HomeComponent implements OnInit {
   }
 
   logout(): void {
-
     // Cerrar dropdown
     this.showProfileDropdown = false;
     console.log('=== INICIO LOGOUT COMPONENT ===');
 
+    // Verificar el método de autenticación
+    const authMethod = localStorage.getItem('auth_method');
+    console.log('Método de autenticación:', authMethod);
+
     // Verificar token ANTES del logout del servicio
     const tokenBefore = localStorage.getItem('auth_token');
-    console.log('Token ANTES de llamar authService.logout():', tokenBefore ? 'Existe' : 'No existe');
+    console.log('Token ANTES de llamar logout:', tokenBefore ? 'Existe' : 'No existe');
 
     // Limpiar estado local PRIMERO
     console.log('Limpiando estado local del componente...');
-
     console.log('Estado local limpiado');
 
-    // LLAMAR AL LOGOUT DEL SERVICIO
-    console.log('Llamando a authService.logout()...');
-    this.authService.logout();
-
-    // Verificar token DESPUÉS del logout del servicio
-    setTimeout(() => {
-      const tokenAfter = localStorage.getItem('auth_token');
-      console.log('Token DESPUÉS de authService.logout():', tokenAfter ? 'AÚN EXISTE!' : 'Eliminado');
-      console.log('=== FIN LOGOUT COMPONENT ===');
-    }, 100);    // Redirigir al login
+    if (authMethod === 'auth0') {
+      // Logout de Auth0
+      console.log('Cerrando sesión de Auth0...');
+      
+      // Limpiar localStorage
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_user');
+      localStorage.removeItem('auth_method');
+      localStorage.removeItem('user_role');
+      
+      // Llamar al logout de Auth0
+      this.auth0.logout({
+        logoutParams: {
+          returnTo: window.location.origin + '/login'
+        }
+      });
+    } else {
+      // Logout tradicional
+      console.log('Llamando a authService.logout() [tradicional]...');
+      this.authService.logout();
+      
+      // Verificar token DESPUÉS del logout del servicio
+      setTimeout(() => {
+        const tokenAfter = localStorage.getItem('auth_token');
+        console.log('Token DESPUÉS de authService.logout():', tokenAfter ? 'AÚN EXISTE!' : 'Eliminado');
+        console.log('=== FIN LOGOUT COMPONENT ===');
+      }, 100);
+    }
   }
 
   private loadDashboardData(): void {
@@ -165,7 +212,14 @@ export class HomeComponent implements OnInit {
       this.sensordataApiService.getAllRequests().subscribe({
         next: (allRequests) => {
           this.waterRequestsCount = allRequests.length;
-          this.waterRequestsPending = allRequests.filter(req => req.status === 'RECEIVED').length;
+          // Contar pendientes: RECEIVED, PENDING, In Progress, etc.
+          this.waterRequestsPending = allRequests.filter(req => 
+            req.status === 'RECEIVED' || 
+            req.status === 'PENDING' || 
+            req.status === 'Pending' ||
+            req.status === 'IN_PROGRESS' ||
+            req.status === 'In Progress'
+          ).length;
           console.log(`Admin - Total requests: ${this.waterRequestsCount}, Pending: ${this.waterRequestsPending}`);
         },
         error: (error) => {
@@ -179,18 +233,38 @@ export class HomeComponent implements OnInit {
       this.sensordataApiService.getProviderProfile().subscribe({
         next: (providerProfile) => {
           const authenticatedProviderId = providerProfile.id;
+          console.log('=== HOME - WATER REQUESTS ===');
+          console.log('Provider ID autenticado:', authenticatedProviderId);
 
           // Obtener todas las requests y filtrar por providerId
           this.sensordataApiService.getAllRequests().subscribe({
             next: (allRequests) => {
-              // Filtrar requests que pertenecen a residentes del proveedor
+              console.log('Total requests del backend:', allRequests.length);
+              console.log('Todas las requests:', allRequests);
+              
+              // Filtrar requests que pertenecen al proveedor
               const providerRequests = allRequests.filter(request => {
-                // Asumiendo que el request tiene providerId o podemos obtenerlo del residentId
-                return request.providerId === authenticatedProviderId;
+                const match = request.providerId === authenticatedProviderId;
+                console.log(`Request ID ${request.id}: providerId=${request.providerId}, match=${match}, status=${request.status}`);
+                return match;
               });
 
+              console.log('Requests filtradas del proveedor:', providerRequests.length);
+              console.log('Requests del proveedor:', providerRequests);
+
               this.waterRequestsCount = providerRequests.length;
-              this.waterRequestsPending = providerRequests.filter(req => req.status === 'RECEIVED').length;
+              
+              // Contar pendientes/en progreso (no DELIVERED o COMPLETED)
+              this.waterRequestsPending = providerRequests.filter(req => {
+                const isPending = req.status === 'RECEIVED' || 
+                                 req.status === 'PENDING' || 
+                                 req.status === 'Pending' ||
+                                 req.status === 'IN_PROGRESS' ||
+                                 req.status === 'In Progress';
+                console.log(`Request ${req.id}: status="${req.status}", isPending=${isPending}`);
+                return isPending;
+              }).length;
+              
               console.log(`Provider - Total requests: ${this.waterRequestsCount}, Pending: ${this.waterRequestsPending}`);
             },
             error: (error) => {
@@ -210,44 +284,57 @@ export class HomeComponent implements OnInit {
   }
 
   private loadReports(): void {
-  this.reportdataapiservice.getProviderProfile().subscribe({
-    next: (providerProfile) => {
-      const authenticatedProviderId = providerProfile.id;
-      console.log('🏠 Home - Proveedor autenticado:', authenticatedProviderId);
+    this.reportdataapiservice.getProviderProfile().subscribe({
+      next: (providerProfile) => {
+        const authenticatedProviderId = providerProfile.id;
+        console.log('=== HOME - REPORTS ===');
+        console.log('Provider ID autenticado:', authenticatedProviderId);
 
-      // Llamar al endpoint para obtener los reportes del proveedor
-      this.reportdataapiservice.getReportsByProviderId(authenticatedProviderId).subscribe({
-        next: (reports) => {
-          console.log('📊 Home - Reports cargados:', reports);
+        // Llamar al endpoint para obtener los reportes del proveedor
+        this.reportdataapiservice.getReportsByProviderId(authenticatedProviderId).subscribe({
+          next: (allReports) => {
+            console.log('Total reportes del backend:', allReports.length);
+            console.log('Todos los reportes:', allReports);
 
-          // Calcular estadísticas
-          this.reportsCount = reports.length;
+            // Filtrar reportes del proveedor
+            const providerReports = allReports.filter(report => {
+              const match = report.providerId === authenticatedProviderId;
+              console.log(`Report ID ${report.id}: providerId=${report.providerId}, match=${match}, status=${report.status}`);
+              return match;
+            });
 
-          // Filtrar reportes activos (ajusta los estados según tu backend)
-          this.reportsActive = reports.filter(report =>
-            report.status === 'ACTIVE' ||
-            report.status === 'OPEN' ||
-            report.status === 'RECEIVED' ||
-            report.status === 'IN_PROGRESS'
-          ).length;
+            console.log('Reportes filtrados del proveedor:', providerReports.length);
 
-          console.log(`📈 Estadísticas - Total: ${this.reportsCount}, Activos: ${this.reportsActive}`);
-        },
-        error: (error) => {
-          console.error('❌ Error loading issue-reports for provider:', error);
-          // Datos de ejemplo en caso de error
-          this.reportsCount = 0;
-          this.reportsActive = 0;
-        }
-      });
-    },
-    error: (error) => {
-      console.error('❌ Error loading provider profile:', error);
-      // Datos de ejemplo en caso de error
-      this.reportsCount = 0;
-      this.reportsActive = 0;
-    }
-  });
+            // Calcular estadísticas
+            this.reportsCount = providerReports.length;
+
+            // Filtrar reportes activos (no cerrados)
+            this.reportsActive = providerReports.filter(report => {
+              const isActive = report.status === 'ACTIVE' ||
+                              report.status === 'OPEN' ||
+                              report.status === 'RECEIVED' ||
+                              report.status === 'IN_PROGRESS' ||
+                              report.status === 'In Progress' ||
+                              report.status === 'Received';
+              console.log(`Report ${report.id}: status="${report.status}", isActive=${isActive}`);
+              return isActive;
+            }).length;
+
+            console.log(`📈 Home Stats - Total: ${this.reportsCount}, Activos: ${this.reportsActive}`);
+          },
+          error: (error) => {
+            console.error('❌ Error loading issue-reports for provider:', error);
+            this.reportsCount = 0;
+            this.reportsActive = 0;
+          }
+        });
+      },
+      error: (error) => {
+        console.error('❌ Error loading provider profile:', error);
+        this.reportsCount = 0;
+        this.reportsActive = 0;
+      }
+    });
   }
 
   private loadResidents(): void {
