@@ -63,89 +63,11 @@
       type="button"
       class="submit-button" 
       (click)="onSubmit()"
-      [disabled]="subscriptionForm.invalid || isLoading || !showPaymentForm">
-      <span class="button-icon" *ngIf="!isLoading">💳</span>
+      [disabled]="subscriptionForm.invalid || isLoading">
+      <span class="button-icon" *ngIf="!isLoading">➕</span>
       <span class="loading-spinner" *ngIf="isLoading"></span>
-      {{ isLoading ? translate('processing_subscription') : translate('continue_to_payment') }}
+      {{ isLoading ? translate('processing_subscription') : translate('add_subscription') }}
     </button>
   </div>
 </div>
-
-<!-- Modal de Pago Separado -->
-<div class="payment-modal-overlay" *ngIf="showPaymentModal" (click)="closePaymentModal()">
-  <div class="payment-modal-container" (click)="$event.stopPropagation()">
-    <div class="payment-modal-header">
-      <h2 class="payment-modal-title">
-        <span class="payment-icon">💳</span>
-        {{ translate('payment_modal_title') }}
-      </h2>
-      <button class="payment-modal-close" (click)="closePaymentModal()">
-        <span class="close-icon">×</span>
-      </button>
-    </div>
-
-    <div class="payment-modal-content">
-      <!-- Resumen del pedido -->
-      <div class="order-summary">
-        <h3 class="summary-title">{{ translate('subscription_summary') }}</h3>
-        <div class="summary-details">
-          <div class="summary-item">
-            <span class="item-label">{{ translate('tank_size') }}</span>
-            <span class="item-value">{{ subscriptionForm.get('waterTankSize')?.value }} {{ translate('liters') }}</span>
-          </div>
-          <div class="summary-item">
-            <span class="item-label">{{ translate('device_monitoring') }}</span>
-            <span class="item-value">S/ {{ FIXED_PRICE.toFixed(2) }}</span>
-          </div>
-          <div class="summary-item">
-            <span class="item-label">{{ translate('includes') }}</span>
-            <span class="item-value">{{ translate('installation_configuration') }}</span>
-          </div>
-          <div class="summary-item total">
-            <span class="item-label">{{ translate('total_to_pay') }}</span>
-            <span class="item-value total-amount">S/ {{ paymentAmount.toFixed(2) }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Formulario de pago de Mercado Pago -->
-      <div class="payment-form-section">
-        <h3 class="payment-form-title">{{ translate('payment_information') }}</h3>
-        <p class="payment-form-description">{{ translate('payment_description') }}</p>
-        
-        <div id="paymentBrick_container" class="payment-form-container-large"></div>
-        
-        <!-- Estados de pago -->
-        <div class="payment-status" *ngIf="paymentStatus">
-          <div class="status-message" [ngClass]="paymentStatusClass">
-            <span class="status-icon" *ngIf="paymentStatus === 'success'">✓</span>
-            <span class="status-icon" *ngIf="paymentStatus === 'error'">⚠</span>
-            <span class="status-text">{{ paymentStatusMessage }}</span>
-          </div>
-          
-          <!-- Mensaje adicional de confirmación para pago exitoso -->
-          <div class="success-confirmation" *ngIf="paymentStatus === 'success' && paymentCompleted">
-            <div class="confirmation-message">
-              <span class="confirmation-icon">🎉</span>
-              <span class="confirmation-text">{{ translate('payment_completed_success') }}</span>
-            </div>
-            <div class="confirmation-details">
-              <p>{{ translate('subscription_created_success') }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="payment-modal-actions">
-      <button 
-        type="button"
-        class="cancel-payment-button" 
-        (click)="closePaymentModal()" 
-        [disabled]="isLoading">
-        <span class="button-icon">✕</span>
-        {{ translate('cancel_subscription') }}
-      </button>
-    </div>
-  </div>
-</div> 
+ 
