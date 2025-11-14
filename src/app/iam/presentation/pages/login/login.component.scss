@@ -30,7 +30,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #667eea 0%);
+  background: #2196f3;
   padding: 2rem;
 
   @media (max-width: 480px) {
@@ -126,7 +126,7 @@ label {
   cursor: pointer;
   transition: all 0.3s ease;
   text-transform: none;
-  background: linear-gradient(135deg, #2196f3 0%, #21cbf3 100%);
+  background: #2196f3;
   color: white;
   margin-top: 1rem;
 
@@ -139,6 +139,154 @@ label {
   &:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(33, 150, 243, 0.3);
+  }
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1.5rem 0;
+  color: #999;
+  font-size: 0.85rem;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #e1e5e9;
+  }
+
+  span {
+    padding: 0 1rem;
+    text-transform: uppercase;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+}
+
+.auth0-session-notice {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  
+  .notice-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .notice-icon {
+    color: #ff9800;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  
+  .notice-text {
+    flex: 1;
+  }
+  
+  .notice-title {
+    color: #856404;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin: 0 0 0.25rem 0;
+  }
+  
+  .notice-email {
+    color: #856404;
+    font-size: 0.85rem;
+    margin: 0 0 0.75rem 0;
+    font-style: italic;
+  }
+  
+  .btn-logout-auth0 {
+    background: #ff9800;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      background: #f57c00;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(255, 152, 0, 0.3);
+    }
+  }
+}
+
+.btn-auth0 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  width: 100%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: none;
+  background: #2196f3;
+  color: white;
+  box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+
+  svg {
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(33, 150, 243, 0.5);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.btn-signup {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 2px solid #2196f3;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  width: 100%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: none;
+  background: white;
+  color: #2196f3;
+
+  svg {
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    background: #2196f3;
+    color: white;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(33, 150, 243, 0.3);
+
+    svg {
+      fill: white;
+    }
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 }
 
@@ -160,4 +308,12 @@ label {
   &:hover {
     text-decoration: underline;
   }
+}
+
+.info-message {
+  text-align: center;
+  margin-top: 1.5rem;
+  color: #666;
+  font-size: 0.85rem;
+  line-height: 1.5;
 }
