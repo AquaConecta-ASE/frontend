@@ -11,11 +11,12 @@ import {ResidentSummaryComponent} from './profiles/residents/presentation/reside
 import {ProviderSummaryComponent} from './profiles/providers/components/provider-summary/provider-summary.component';
 import {ProviderItemComponent} from './profiles/providers/components/provider-item/provider-item.component';
 import {DeviceMonitoringComponent} from './monitoring/device-monitoring/device-monitoring.component';
-import { PredictiveAnalyticsComponent } from './analytics/predictive-analytics/components/predictive-analytics.component';
 import {LoginComponent} from './iam/presentation/pages/login/login.component';
 import {SignupComponent} from './iam/presentation/pages/signup/signup.component';
+import {CallbackComponent} from './iam/presentation/pages/callback/callback.component';
 import {IssueSummaryComponent} from './serviceRequests/issue-reports/components/issue-summary/issue-summary.component';
 import {AdminDashboardComponent} from './analytics/admin-dashboard/admin-dashboard.component';
+import {PredictiveAnalyticsComponent} from './analytics/predictive-analytics/components/predictive-analytics.component';
 
 export const routes: Routes = [
   { path: '', component: LoginComponent },
@@ -24,6 +25,7 @@ export const routes: Routes = [
   { path: 'requests', component: WaterRequestComponent },
   { path: 'schedule', component: ScheduleDateComponent },
   { path: 'login', component: LoginComponent },
+  { path: 'callback', component: CallbackComponent }, // ← Ruta para Auth0 callback
   { path: 'issue-reports', component: IssueReportListComponent},
   { path: 'signup', component: SignupComponent },
   { path: 'residents/create', component: CreateResidentComponent },
@@ -31,11 +33,11 @@ export const routes: Routes = [
   {path : 'residents/:id/details', component: ResidentSummaryComponent},
   { path: 'issue-reports/:id', component: IssueSummaryComponent },
   { path: 'admin/admin-dashboard', component: AdminDashboardComponent },
+  { path: 'predictive-analytics', component: PredictiveAnalyticsComponent }, // ← Ruta para Predictive Analytics
   { path: 'provider/:id', redirectTo: 'provider/:id/detail', pathMatch: 'full' },
   { path: 'provider/:id/detail', component: ProviderSummaryComponent },
   { path: 'provider/:id/profile', component: ProviderItemComponent },
   { path: 'sensor-monitoring', component: DeviceMonitoringComponent },
-  { path: 'predictive-analytics', component: PredictiveAnalyticsComponent },
   
   { path: '**', component: PageNotFoundComponent }
 ];

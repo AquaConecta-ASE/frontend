@@ -50,6 +50,7 @@ Thumbs.db
 .env.test
 .env.production
 
+
 # Build files
 /build
 /dist-ssr
@@ -84,3 +85,5 @@ yarn-error.log*
 
 # Local Netlify folder
 .netlify
+API_DOCUMENTATION_FRONTEND.md
+AUTH0_SETUP.md

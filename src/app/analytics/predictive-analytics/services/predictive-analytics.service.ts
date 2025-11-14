@@ -12,8 +12,6 @@ export class PredictiveAnalyticsService {
   private resourceEndpoint = '/predictive-analytics';
 
   constructor() {
-    // Use environment config or fallback to localhost
-    // Ensure basePath doesn't end with '/' to avoid double slashes
     const baseUrl = environment.serverBasePath || 'http://localhost:8080/api/v1';
     this.basePath = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
   }

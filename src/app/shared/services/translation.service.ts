@@ -72,6 +72,10 @@ export class TranslationService {
       'password_minlength': 'Password must be at least 6 characters',
       'signing_in': 'Signing in...',
       'sign_in': 'Sign in',
+      'or': 'or',
+      'sign_in_with_auth0': 'Sign in with Auth0',
+      'auth0_session_active': 'Auth0 session active',
+      'logout_auth0': 'Logout from Auth0',
       'dont_have_account': "Don't have an account?",
       'sign_up_here': 'Sign up here',
 
@@ -475,6 +479,10 @@ export class TranslationService {
       'password_minlength': 'La contraseña debe tener al menos 6 caracteres',
       'signing_in': 'Iniciando sesión...',
       'sign_in': 'Iniciar Sesión',
+      'or': 'o',
+      'sign_in_with_auth0': 'Iniciar sesión con Auth0',
+      'auth0_session_active': 'Sesión Auth0 activa',
+      'logout_auth0': 'Cerrar sesión de Auth0',
       'dont_have_account': '¿No tienes una cuenta?',
       'sign_up_here': 'Regístrate aquí',
 
