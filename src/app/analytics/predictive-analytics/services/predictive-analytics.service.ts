@@ -1,21 +1,33 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { PredictionResponse, ConsumptionRecord } from '../model/prediction.model';
-import { BaseService } from '../../../shared/services/base.service';
 import { environment } from '../../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
-export class PredictiveAnalyticsService extends BaseService<PredictionResponse> {
+export class PredictiveAnalyticsService {
+  private http = inject(HttpClient);
+  private basePath: string;
+  private resourceEndpoint = '/predictive-analytics';
 
-  constructor(http: HttpClient) {
-    super(http);
+  constructor() {
     // Use environment config or fallback to localhost
     // Ensure basePath doesn't end with '/' to avoid double slashes
     const baseUrl = environment.serverBasePath || 'http://localhost:8080/api/v1';
     this.basePath = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-    this.resourceEndpoint = '/predictive-analytics';
+  }
+
+  private get httpOptions(): { headers: HttpHeaders } {
+    return {
+      headers: new HttpHeaders({
+        'Content-type': 'application/json'
+      })
+    };
+  }
+
+  private resourcePath(): string {
+    return `${this.basePath}${this.resourceEndpoint}`;
   }
 
   /**
@@ -69,7 +81,7 @@ export class PredictiveAnalyticsService extends BaseService<PredictionResponse> 
    */
   getConsumptionHistory(subscriptionId: number, startDate?: string, endDate?: string): Observable<ConsumptionRecord[]> {
     let url = `${this.resourcePath()}/subscriptions/${subscriptionId}/consumption-history`;
-    
+
     // Add query parameters if provided
     const params: string[] = [];
     if (startDate) params.push(`startDate=${startDate}`);
@@ -77,7 +89,7 @@ export class PredictiveAnalyticsService extends BaseService<PredictionResponse> 
     if (params.length > 0) {
       url += '?' + params.join('&');
     }
-    
+
     return this.http.get<ConsumptionRecord[]>(url, this.httpOptions)
       .pipe(
         catchError(error => {
@@ -101,5 +113,4 @@ export class PredictiveAnalyticsService extends BaseService<PredictionResponse> 
         })
       );
   }
-
 }

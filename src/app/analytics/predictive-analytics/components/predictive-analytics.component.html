@@ -291,9 +291,9 @@
             <span class="sub-gen-badge">{{ subscription.status || 'ACTIVE' }}</span>
           </div>
           <div class="sub-gen-info">
-            <p *ngIf="subscription.deviceId || subscription.sensorId">
+            <p *ngIf="subscription.deviceId">
               <span class="label">Device/Sensor ID:</span>
-              <span class="value">{{ subscription.deviceId || subscription.sensorId }}</span>
+              <span class="value">{{ subscription.deviceId }}</span>
             </p>
             <p>
               <span class="label">Start Date:</span>
