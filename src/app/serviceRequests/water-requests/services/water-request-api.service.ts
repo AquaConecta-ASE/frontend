@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import {HttpClient} from "@angular/common/http";
-import { Observable, throwError } from 'rxjs';
+import { Observable } from 'rxjs';
 import {BaseService} from '../../../shared/services/base.service';
 import {WaterRequestModel} from '../model/water-request.model';
 
@@ -14,13 +14,31 @@ export class WaterRequestApiService extends BaseService<WaterRequestModel> {
     this.resourceEndpoint = 'water-supply-requests';
   }
 
+  /**
+   * Obtiene el perfil del proveedor autenticado
+   * Usa el providerId del localStorage para construir la URL correcta
+   */
   getProviderProfile(): Observable<any> {
     const storedUser = localStorage.getItem('auth_user');
     if (!storedUser) {
-      return throwError(() => new Error('No user found in localStorage'));
+      console.error('No user found in localStorage');
+      throw new Error('No user found in localStorage');
     }
+    
     const user = JSON.parse(storedUser);
-    return this.http.get<any>(`${this.basePath}providers/${user.id}/profiles`, this.httpOptions);
+    const providerId = user.providerId || user.id;
+    
+    console.log('=== GET PROVIDER PROFILE (Water Requests) ===');
+    console.log('User from localStorage:', user);
+    console.log('Provider ID to use:', providerId);
+    console.log('Endpoint:', `${this.basePath}providers/${providerId}/profiles`);
+    
+    if (!providerId || (typeof providerId === 'string' && providerId.includes('auth0'))) {
+      console.error('❌ Provider ID no válido:', providerId);
+      throw new Error('Invalid provider ID');
+    }
+    
+    return this.http.get<any>(`${this.basePath}providers/${providerId}/profiles`, this.httpOptions);
   }
 
   getAllRequests(): Observable<WaterRequestModel[]> {
