@@ -68,26 +68,21 @@
   font-weight: bold;
 }
 
-// Nuevo contenedor principal para layout lado a lado
+// Nuevo contenedor principal para layout completo
 .main-container {
   display: flex;
-  gap: 30px;
+  flex-direction: column;
   margin-bottom: 30px;
 }
 
-.form-container {
-  flex: 2;
-  min-width: 0; // Permite que el flex item se encoja
-}
-
-.payment-container {
-  flex: 1;
-  min-width: 350px;
+.form-container-full {
+  width: 100%;
 }
 
 .form-layout {
   display: flex;
   flex-wrap: wrap;
+  gap: 20px;
 }
 
 .form-column {
@@ -465,4 +460,350 @@ label {
   }
 }
 
+// Estilos para el botón de crear residente
+.form-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+  padding: 20px 0;
+}
 
+.btn-create-resident {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 15px 50px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled,
+  &.disabled {
+    background: #cccccc;
+    cursor: not-allowed;
+    box-shadow: none;
+    opacity: 0.6;
+  }
+}
+
+// Overlay de procesamiento
+.processing-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.processing-message {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  text-align: center;
+  max-width: 400px;
+
+  h3 {
+    margin: 20px 0 10px 0;
+    color: #333;
+    font-size: 20px;
+  }
+
+  p {
+    color: #666;
+    margin: 0;
+    font-size: 14px;
+  }
+}
+
+.processing-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+// Modal de éxito con link de contraseña
+.success-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.success-modal {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  animation: slideUp 0.4s ease;
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  text-align: center;
+  padding: 40px 30px 20px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 16px 16px 0 0;
+
+  .success-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    color: #4caf50;
+    animation: scaleIn 0.5s ease;
+  }
+
+  h2 {
+    font-size: 24px;
+    color: #333;
+    margin: 0 0 15px 0;
+    font-weight: 600;
+  }
+
+  .resident-info {
+    font-size: 18px;
+    color: #2196f3;
+    font-weight: 600;
+    margin: 8px 0;
+  }
+
+  .email-info {
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+  }
+}
+
+@keyframes scaleIn {
+  from { 
+    transform: scale(0);
+    opacity: 0;
+  }
+  to { 
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.modal-body {
+  padding: 30px;
+
+  .info-section {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background-color: #e3f2fd;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    border-left: 4px solid #2196f3;
+
+    svg {
+      flex-shrink: 0;
+      margin-top: 2px;
+      color: #2196f3;
+    }
+
+    p {
+      margin: 0;
+      font-size: 14px;
+      color: #1565c0;
+      line-height: 1.5;
+    }
+  }
+
+  .password-link-section {
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 12px;
+    }
+
+    .link-container {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .link-input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 2px solid #2196f3;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: #333;
+      background-color: #f5f7fa;
+      cursor: text;
+      transition: all 0.3s ease;
+
+      &:focus {
+        outline: none;
+        border-color: #1976d2;
+        background-color: white;
+        box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+      }
+    }
+
+    .btn-copy {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background: #2196f3;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+
+      svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      &:hover {
+        background: #1976d2;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
+    }
+
+    .help-text {
+      font-size: 13px;
+      color: #666;
+      margin: 0;
+      line-height: 1.5;
+    }
+  }
+}
+
+.modal-footer {
+  padding: 20px 30px 30px;
+  text-align: center;
+
+  .btn-close-modal {
+    padding: 14px 40px;
+    background: #2196f3;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+
+    &:hover {
+      background: #1976d2;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(33, 150, 243, 0.4);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+}
+
+// Responsive para modal
+@media (max-width: 768px) {
+  .success-modal {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .modal-header {
+    padding: 30px 20px 15px;
+
+    h2 {
+      font-size: 20px;
+    }
+
+    .resident-info {
+      font-size: 16px;
+    }
+  }
+
+  .modal-body {
+    padding: 20px;
+
+    .password-link-section {
+      .link-container {
+        flex-direction: column;
+      }
+
+      .btn-copy {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  }
+
+  .modal-footer {
+    padding: 15px 20px 25px;
+
+    .btn-close-modal {
+      width: 100%;
+    }
+  }
+}

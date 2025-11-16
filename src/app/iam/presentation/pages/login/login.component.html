@@ -1,59 +1,47 @@
 <div class="login-container">
   <div class="image-section">
     <div class="background-image"></div>
-    <!-- La imagen de fondo de manos y agua se carga mediante CSS -->
   </div>
-  <div class="form-section">    <div class="form-container">
+  
+  <div class="form-section">
+    <div class="form-container">
       <h1 class="app-title">Aqua<span class="highlight">Conecta</span></h1>
+      <p class="welcome-message">Bienvenido al sistema de gesti�n de agua</p>
 
-      <p class="welcome-message">{{ 'welcome_back' | translate }}</p>
-
-      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">        <div class="form-group">
-          <label for="username">{{ 'username' | translate }}</label>
-          <input
-            type="text"
-            id="username"
-            formControlName="username"
-            [placeholder]="'username_placeholder' | translate"
-            class="form-control"
-            [ngClass]="{'invalid': hasError('username', 'required')}"
-          >
-          <div class="error-message" *ngIf="hasError('username', 'required')">
-            {{ 'username_required' | translate }}
-          </div>
-        </div>        <div class="form-group">
-          <label for="password">{{ 'password' | translate }}</label>
-          <input
-            type="password"
-            id="password"
-            formControlName="password"
-            [placeholder]="'password_placeholder' | translate"
-            class="form-control"
-            [ngClass]="{'invalid': hasError('password', 'required') || hasError('password', 'minlength')}"
-          >
-          <div class="error-message" *ngIf="hasError('password', 'required')">
-            {{ 'password_required' | translate }}
-          </div>
-          <div class="error-message" *ngIf="hasError('password', 'minlength')">
-            {{ 'password_minlength' | translate }}
+      <!--
+      <div class="auth0-session-notice" *ngIf="isAuth0Authenticated$ | async">
+        <div class="notice-content">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="notice-icon">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+          </svg>
+          <div class="notice-text">
+            <p class="notice-title">Sesi�n activa</p>
+            <p class="notice-email" *ngIf="auth0User$ | async as user">{{user.email}}</p>
+            <button type="button" class="btn-logout-auth0" (click)="logoutAuth0()">Cerrar sesi�n</button>
           </div>
         </div>
+      </div>
+-->
+      <button type="button" class="btn-auth0 btn-primary" (click)="loginWithAuth0()">
+        
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+        </svg>
+        Iniciar Sesi�n
+      </button>
 
-        <div class="error-container" *ngIf="errorMessage">
-          <p class="error-message">{{ errorMessage }}</p>
-        </div>        <button
-          type="submit"
-          class="btn-signin"
-          [disabled]="isSubmitting"
-        >
-          {{ isSubmitting ? ('signing_in' | translate) : ('sign_in' | translate) }}
-        </button>
+      <div class="divider">
+        <span>O</span>
+      </div>
 
-        <div class="signup-section">
-          <span>{{ 'dont_have_account' | translate }}</span>
-          <a (click)="onSignup()" class="signup-link">{{ 'sign_up_here' | translate }}</a>
-        </div>
-      </form>
+      <button type="button" class="btn-signup btn-secondary" (click)="loginWithAuth0()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+        </svg>
+        Crear Cuenta
+      </button>
+
+      <p class="info-message">Gestiona tu autenticaci�n de forma segura con Auth0</p>
     </div>
   </div>
 </div>

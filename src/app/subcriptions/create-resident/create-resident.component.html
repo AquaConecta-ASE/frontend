@@ -5,17 +5,20 @@
 
   <div class="main-container">
     <!-- Formulario del residente -->
-    <div class="form-container">
+    <div class="form-container-full">
       <form [formGroup]="residentForm" (ngSubmit)="onSubmit()">
         <div class="form-layout">
           <!-- Primera columna -->
-          <div class="form-column left-column">            <div class="form-group">
+          <div class="form-column left-column">
+            <div class="form-group">
               <label for="firstName">{{ translate('first_name_resident') }}</label>
               <input type="text" id="firstName" formControlName="firstName" [placeholder]="translate('first_name_placeholder_resident')" class="form-control">
               <div *ngIf="residentForm.get('firstName')?.hasError('required') && residentForm.get('firstName')?.touched" class="error-msg">
                 {{ translate('first_name_required_resident') }}
               </div>
-            </div>            <div class="form-group">
+            </div>
+
+            <div class="form-group">
               <label for="documentType">{{ translate('document_type_resident') }}</label>
               <select id="documentType" formControlName="documentType" class="form-control">
                 <option value="" disabled>{{ translate('select_document_type') }}</option>
@@ -30,13 +33,16 @@
           </div>
 
           <!-- Segunda columna -->
-          <div class="form-column middle-column">            <div class="form-group">
+          <div class="form-column middle-column">
+            <div class="form-group">
               <label for="lastName">{{ translate('last_name_resident') }}</label>
               <input type="text" id="lastName" formControlName="lastName" [placeholder]="translate('last_name_placeholder_resident')" class="form-control">
               <div *ngIf="residentForm.get('lastName')?.hasError('required') && residentForm.get('lastName')?.touched" class="error-msg">
                 {{ translate('last_name_required_resident') }}
               </div>
-            </div>            <div class="form-group">
+            </div>
+
+            <div class="form-group">
               <label for="documentNumber">{{ translate('document_number_resident') }}</label>
               <input type="text" id="documentNumber" formControlName="documentNumber" [placeholder]="translate('document_number_placeholder_resident')" class="form-control">
               <div *ngIf="residentForm.get('documentNumber')?.hasError('required') && residentForm.get('documentNumber')?.touched" class="error-msg">
@@ -68,6 +74,7 @@
                 {{ translate('water_tank_size_required') }}
               </div>
             </div>
+
             <div class="form-group">
               <label for="email">{{ translate('email_resident') }}</label>
               <input type="email" id="email" formControlName="email" [placeholder]="translate('email_placeholder_resident')" class="form-control">
@@ -78,6 +85,7 @@
                 {{ translate('email_invalid_resident') }}
               </div>
             </div>
+
             <div class="form-group">
               <label for="phone">{{ translate('phone_resident') }}</label>
               <input type="tel" id="phone" formControlName="phone" [placeholder]="translate('phone_placeholder_resident')" class="form-control">
@@ -88,65 +96,87 @@
                 {{ translate('phone_pattern_resident') }}
               </div>
             </div>
-            <!-- Input de tarjeta de prueba -->
-            <div class="form-group">
-              <label for="testCard">Tarjeta de prueba</label>
-              <input type="text" id="testCard" class="form-control" value="5031755734530604" readonly style="font-family: 'Inter', 'Inter-Regular', monospace; color: #2563eb; letter-spacing: 1px;">
-            </div>
-            <!-- Validación cruzada para coincidencia de contraseñas -->
-            <div *ngIf="residentForm.errors?.['passwordMismatch'] && residentForm.touched" class="error-msg">
-              {{ translate('passwords_no_match_resident') }}
-            </div>
           </div>
+        </div>
+
+        <!-- Botón de crear residente -->
+        <div class="form-actions">
+          <button 
+            type="submit" 
+            class="btn-create-resident" 
+            [disabled]="residentForm.invalid || isSubmitting"
+            [class.disabled]="residentForm.invalid || isSubmitting">
+            <span *ngIf="!isSubmitting">{{ translate('create_resident') }}</span>
+            <span *ngIf="isSubmitting">{{ translate('creating') }}...</span>
+          </button>
         </div>
       </form>
     </div>
-
-    <!-- Sección de pago -->
-    <div class="payment-container">
-      <h3 class="payment-title">{{ translate('payment_for_registration') }}</h3>
-      <!-- Mensaje cuando el formulario no está completo -->
-      <div *ngIf="!isFormComplete" class="payment-disabled-message">
-        {{ translate('complete_fields_message') }}
-      </div>
-      <div class="payment-section" [ngClass]="{'disabled': !isFormComplete}">
-
-        <div class="payment-amount">
-          <span class="amount-label">{{ translate('amount_to_pay') }}</span>
-          <span class="amount-value">S/ 200.00</span>
-        </div>
-
-        <!-- Payment Brick Container -->
-        <div id="paymentBrick_container" [style.pointer-events]="!isFormComplete ? 'none' : 'auto'"></div>
-
-        <!-- Payment status messages -->
-        <div *ngIf="paymentStatus" class="payment-status" [ngClass]="paymentStatusClass">
-          <div class="status-message">
-            <span class="status-icon" *ngIf="paymentStatus === 'success'">✓</span>
-            <span class="status-icon" *ngIf="paymentStatus === 'error'">⚠</span>
-            <span class="status-text">{{ paymentStatusMessage }}</span>
-          </div>
-          
-          <!-- Mensaje adicional de confirmación para pago exitoso -->
-          <div class="success-confirmation" *ngIf="paymentStatus === 'success' && paymentCompleted">
-            <div class="confirmation-message">
-              <span class="confirmation-icon">🎉</span>
-              <span class="confirmation-text">¡Pago completado exitosamente!</span>
-            </div>
-            <div class="confirmation-details">
-              <p>El residente ha sido creado y será redirigido en unos segundos...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
+
   <!-- Overlay de procesamiento -->
-  <div *ngIf="isSubmitting" class="processing-overlay success-overlay">
+  <div *ngIf="isSubmitting" class="processing-overlay">
     <div class="processing-message">
       <div class="processing-spinner"></div>
-      <h3>{{ translate('payment_successful_creating') }}</h3>
+      <h3>{{ translate('creating_resident') }}</h3>
       <p>{{ translate('please_wait_message') }}</p>
+    </div>
+  </div>
+
+  <!-- Modal de éxito con link de contraseña -->
+  <div *ngIf="showSuccessModal" class="success-modal-overlay" (click)="closeModal()">
+    <div class="success-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="success-icon">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </div>
+        <h2>¡Residente Creado Exitosamente!</h2>
+        <p class="resident-info">{{ residentName }}</p>
+        <p class="email-info">{{ residentEmail }}</p>
+      </div>
+
+      <div class="modal-body">
+        <div class="info-section">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+          </svg>
+          <p>Se ha enviado un correo electrónico al residente con el link para establecer su contraseña.</p>
+        </div>
+
+        <div class="password-link-section">
+          <label>Link para establecer contraseña:</label>
+          <div class="link-container">
+            <input 
+              type="text" 
+              [value]="passwordResetUrl" 
+              readonly 
+              class="link-input"
+              #linkInput
+              (click)="linkInput.select()"
+            />
+            <button 
+              type="button" 
+              class="btn-copy" 
+              (click)="copyToClipboard()"
+              title="Copiar al portapapeles">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+              </svg>
+              Copiar
+            </button>
+          </div>
+          <p class="help-text">Comparte este link con el residente para que pueda establecer su contraseña</p>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-close-modal" (click)="closeModal()">
+          Entendido
+        </button>
+      </div>
     </div>
   </div>
 </div>

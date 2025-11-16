@@ -175,13 +175,27 @@ export class IssueReportListComponent implements AfterViewInit {
       this.reportdataApiService.getProviderProfile().subscribe(
         (providerProfile) => {
           const authenticatedProviderId = providerProfile.id;
-          console.log('ProveedorID autenticado:', providerProfile.id);
+          console.log('=== PROVIDER PROFILE OBTENIDO ===');
+          console.log('Perfil completo:', providerProfile);
+          console.log('Provider ID autenticado:', authenticatedProviderId);
 
           this.reportdataApiService.getReportsByProviderId(authenticatedProviderId).subscribe(
             (response: IssueReportModel[]) => {
-              console.log('Reports for provider:', response);
+              console.log('=== TODOS LOS REPORTES DEL BACKEND ===');
+              console.log('Total reportes recibidos:', response.length);
+              console.log('Reportes completos:', response);
 
-              response.forEach((report) => {
+              // IMPORTANTE: Filtrar reportes por providerId
+              const filteredReports = response.filter(report => {
+                console.log(`Reporte ID ${report.id}: providerId=${report.providerId}, match=${report.providerId === authenticatedProviderId}`);
+                return report.providerId === authenticatedProviderId;
+              });
+
+              console.log('=== REPORTES FILTRADOS PARA PROVIDER ===');
+              console.log('Reportes filtrados:', filteredReports.length);
+              console.log('IDs de reportes:', filteredReports.map(r => r.id));
+
+              filteredReports.forEach((report) => {
                 if (report.status === 'IN_PROGRESS') {
                   report.status = 'In Progress';
                 } else if (report.status === 'CLOSED') {
@@ -199,8 +213,8 @@ export class IssueReportListComponent implements AfterViewInit {
                 );
               });
 
-              this.allReports = response;
-              this.requests.data = response;
+              this.allReports = filteredReports;
+              this.requests.data = filteredReports;
               this.isLoadingResults = false;
               this.resultsLength = this.requests.data.length;
               console.log('Reports loaded:', this.requests.data);

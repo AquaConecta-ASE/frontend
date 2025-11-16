@@ -42,6 +42,22 @@ export class DeviceMonitoringComponent implements OnInit {
 
     this.deviceDataService.getCompleteSensorData().subscribe({
       next: (data) => {
+        console.log('=== DEVICE DATA LOADED ===');
+        console.log('Total residents:', data.length);
+        
+        data.forEach((residentData, index) => {
+          console.log(`\nResident ${index + 1}:`, residentData.resident.firstName, residentData.resident.lastName);
+          console.log('  Total events:', residentData.sensorEvents?.length || 0);
+          console.log('  Subscriptions:', residentData.subscriptions?.length || 0);
+          
+          if (residentData.subscriptions && residentData.subscriptions.length > 0) {
+            residentData.subscriptions.forEach((sub: any) => {
+              const eventsForDevice = residentData.sensorEvents?.filter((e: SensorEvent) => e.deviceId === sub.deviceId) || [];
+              console.log(`    Device ${sub.deviceId}: ${eventsForDevice.length} events`);
+            });
+          }
+        });
+        
         this.residentDeviceData = data;
         this.isLoading = false;
       },
@@ -61,8 +77,22 @@ export class DeviceMonitoringComponent implements OnInit {
   }
 
   selectDevice(device: any): void {
+    console.log('=== DEVICE SELECTED ===');
+    console.log('Selected Device:', device);
+    
+    // Obtener el ID real del dispositivo (puede ser deviceId o sensorId)
+    const actualDeviceId = this.getDeviceId(device);
+    console.log('Device ID (deviceId):', device.deviceId);
+    console.log('Sensor ID (sensorId):', device.sensorId);
+    console.log('Actual ID to use:', actualDeviceId);
+    console.log('Selected Resident:', this.selectedResident?.resident.firstName, this.selectedResident?.resident.lastName);
+    
     this.selectedDevice = device;
     this.modalStep = 'details';
+    
+    // Verificar eventos inmediatamente
+    const events = this.getDeviceEvents(actualDeviceId);
+    console.log('Events for this device:', events.length);
   }
 
   backToDeviceList(): void {
@@ -77,18 +107,10 @@ export class DeviceMonitoringComponent implements OnInit {
     this.modalStep = 'devices';
   }
 
-  // Listen to global keydown events. Use Event in the parameter because
-  // HostListener provides a general Event type; cast to KeyboardEvent at runtime
-  // to access keyboard-specific properties safely.
-  @HostListener('document:keydown', ['$event'])
+  @HostListener('document:keydown.escape', ['$event'])
   onEscapeKey(event: Event): void {
-    const ke = event as KeyboardEvent;
-    // Guard: only handle real keyboard events and the Escape key
-    if (!ke || typeof ke.key !== 'string') return;
-    if (ke.key === 'Escape' || ke.key === 'Esc') {
-      if (this.isModalOpen) {
-        this.closeModal();
-      }
+    if (this.isModalOpen) {
+      this.closeModal();
     }
   }
 
@@ -192,9 +214,20 @@ export class DeviceMonitoringComponent implements OnInit {
     return residentData.subscriptions?.find(sub => sub.status.toLowerCase() === 'active') || null;
   }
 
-  // Método para obtener todas las suscripciones activas
+  // Obtener todas las suscripciones activas
   getActiveSubscriptions(residentData: ResidentSensorData): any[] {
     return residentData.subscriptions?.filter(sub => sub.status.toLowerCase() === 'active') || [];
+  }
+
+  // Método auxiliar para obtener el ID del dispositivo de una suscripción
+  getIdFromSubscription(subscription: any): number | undefined {
+    // Priorizar deviceId, pero usar sensorId como fallback
+    return subscription?.deviceId ?? subscription?.sensorId;
+  }
+
+  // Obtener el ID real del dispositivo (sensorId o deviceId)
+  getDeviceId(device: any): number | undefined {
+    return device?.deviceId ?? device?.sensorId;
   }
 
   // Dashboard statistics methods
@@ -246,22 +279,48 @@ export class DeviceMonitoringComponent implements OnInit {
   }
 
   // Método para obtener eventos específicos de un dispositivo de un residente específico
-  getDeviceEventsForResident(deviceId: number | undefined, residentData: ResidentSensorData): SensorEvent[] {
-    if (deviceId === null || deviceId === undefined) return [];
-    return residentData.sensorEvents.filter((event: SensorEvent) => ((event.deviceId ?? (event as any).sensorId) === deviceId));
+  getDeviceEventsForResident(deviceId: number, residentData: ResidentSensorData): SensorEvent[] {
+    return residentData.sensorEvents.filter((event: SensorEvent) => event.deviceId === deviceId);
   }
 
   // Método para obtener el último evento de un dispositivo específico de un residente específico
-  getLatestEventForDeviceOfResident(deviceId: number | undefined, residentData: ResidentSensorData): SensorEvent | null {
+  getLatestEventForDeviceOfResident(deviceId: number, residentData: ResidentSensorData): SensorEvent | null {
     const events = this.getDeviceEventsForResident(deviceId, residentData);
     return events.length > 0 ? events[events.length - 1] : null;
   }
 
   // Método para obtener eventos específicos de un dispositivo
   getDeviceEvents(deviceId: number | undefined): SensorEvent[] {
-    if (!this.selectedResident) return [];
-    if (deviceId === null || deviceId === undefined) return [];
-    return this.selectedResident.sensorEvents.filter((event: SensorEvent) => ((event.deviceId ?? (event as any).sensorId) === deviceId));
+    if (!this.selectedResident || !deviceId) {
+      console.log('⚠️ No selectedResident or deviceId:', { selectedResident: this.selectedResident, deviceId });
+      return [];
+    }
+    
+    console.log('=== GET DEVICE EVENTS ===');
+    console.log('Selected Resident:', this.selectedResident.resident.firstName, this.selectedResident.resident.lastName);
+    console.log('Device ID to filter:', deviceId);
+    console.log('Total events for resident:', this.selectedResident.sensorEvents?.length || 0);
+    
+    const filteredEvents = this.selectedResident.sensorEvents.filter((event: SensorEvent) => {
+      // Verificar tanto deviceId como sensorId
+      const eventDeviceId = (event as any).deviceId ?? (event as any).sensorId;
+      const matches = eventDeviceId === deviceId;
+      
+      if (this.selectedResident && this.selectedResident.sensorEvents.indexOf(event) < 5) {
+        // Solo logear los primeros 5 eventos para no saturar la consola
+        console.log(`Event ID ${event.id}: deviceId=${(event as any).deviceId}, sensorId=${(event as any).sensorId}, comparing with ${deviceId}, matches=${matches}`);
+      }
+      
+      return matches;
+    });
+    
+    console.log('✅ Filtered events count:', filteredEvents.length);
+    if (filteredEvents.length > 0) {
+      console.log('First event sample:', filteredEvents[0]);
+      console.log('Last event sample:', filteredEvents[filteredEvents.length - 1]);
+    }
+    
+    return filteredEvents;
   }
 
   // Método para obtener el último evento de un dispositivo específico
@@ -275,12 +334,6 @@ export class DeviceMonitoringComponent implements OnInit {
     return this.getDeviceEvents(deviceId).length > 0;
   }
 
-  // Helper público: obtiene el id válido desde una suscripción (deviceId o sensorId)
-  public getIdFromSubscription(sub: any): number | undefined {
-    if (!sub) return undefined;
-    return (sub.deviceId ?? sub.sensorId) as number | undefined;
-  }
-
   // Nuevas funciones para el resumen inteligente del card
 
   // Obtener rango de calidad de todos los dispositivos activos
@@ -290,8 +343,7 @@ export class DeviceMonitoringComponent implements OnInit {
 
     const qualities: string[] = [];
     activeSubscriptions.forEach((subscription: any) => {
-      const id = this.getIdFromSubscription(subscription);
-      const latestEvent = this.getLatestEventForDeviceOfResident(id, residentData);
+      const latestEvent = this.getLatestEventForDeviceOfResident(subscription.deviceId, residentData);
       if (latestEvent) {
         qualities.push(latestEvent.qualityValue);
       }
@@ -321,8 +373,7 @@ export class DeviceMonitoringComponent implements OnInit {
     const activeSubscriptions = this.getActiveSubscriptions(residentData);
 
     return activeSubscriptions.some((subscription: any) => {
-      const id = this.getIdFromSubscription(subscription);
-      const latestEvent = this.getLatestEventForDeviceOfResident(id, residentData);
+      const latestEvent = this.getLatestEventForDeviceOfResident(subscription.deviceId, residentData);
       if (latestEvent) {
         const levelValue = typeof latestEvent.levelValue === 'string' ?
           parseFloat(latestEvent.levelValue) : latestEvent.levelValue;
@@ -339,8 +390,7 @@ export class DeviceMonitoringComponent implements OnInit {
     const activeSubscriptions = this.getActiveSubscriptions(residentData);
 
     return activeSubscriptions.filter((subscription: any) => {
-      const id = this.getIdFromSubscription(subscription);
-      const latestEvent = this.getLatestEventForDeviceOfResident(id, residentData);
+      const latestEvent = this.getLatestEventForDeviceOfResident(subscription.deviceId, residentData);
       if (latestEvent) {
         const levelValue = typeof latestEvent.levelValue === 'string' ?
           parseFloat(latestEvent.levelValue) : latestEvent.levelValue;
@@ -381,8 +431,7 @@ export class DeviceMonitoringComponent implements OnInit {
 
     const qualities: string[] = [];
     activeSubscriptions.forEach((subscription: any) => {
-      const id = this.getIdFromSubscription(subscription);
-      const latestEvent = this.getLatestEventForDeviceOfResident(id, residentData);
+      const latestEvent = this.getLatestEventForDeviceOfResident(subscription.deviceId, residentData);
       if (latestEvent) {
         qualities.push(latestEvent.qualityValue);
       }
@@ -424,8 +473,7 @@ export class DeviceMonitoringComponent implements OnInit {
 
     const qualities: string[] = [];
     activeSubscriptions.forEach((subscription: any) => {
-      const id = this.getIdFromSubscription(subscription);
-      const latestEvent = this.getLatestEventForDeviceOfResident(id, residentData);
+      const latestEvent = this.getLatestEventForDeviceOfResident(subscription.deviceId, residentData);
       if (latestEvent) {
         qualities.push(latestEvent.qualityValue);
       }
@@ -447,8 +495,7 @@ export class DeviceMonitoringComponent implements OnInit {
 
     const qualities: string[] = [];
     activeSubscriptions.forEach((subscription: any) => {
-      const id = this.getIdFromSubscription(subscription);
-      const latestEvent = this.getLatestEventForDeviceOfResident(id, residentData);
+      const latestEvent = this.getLatestEventForDeviceOfResident(subscription.deviceId, residentData);
       if (latestEvent) {
         qualities.push(latestEvent.qualityValue);
       }
@@ -470,8 +517,7 @@ export class DeviceMonitoringComponent implements OnInit {
 
     const levels: number[] = [];
     activeSubscriptions.forEach((subscription: any) => {
-      const id = this.getIdFromSubscription(subscription);
-      const latestEvent = this.getLatestEventForDeviceOfResident(id, residentData);
+      const latestEvent = this.getLatestEventForDeviceOfResident(subscription.deviceId, residentData);
       if (latestEvent) {
         const levelValue = typeof latestEvent.levelValue === 'string' ?
           parseFloat(latestEvent.levelValue) : latestEvent.levelValue;
