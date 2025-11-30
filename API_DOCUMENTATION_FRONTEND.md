@@ -5,7 +5,7 @@
 ### ❌ **ENDPOINTS ANTIGUOS (YA NO EXISTEN)**
 ```
 ❌ GET  /api/v1/predictive-analytics/residents/{residentId}/predictions
-❌ POST /api/v1/predictive-analytics/residents/{residentId}/predictions
+❌ POST /api/v1/predictive-analytics/residents/{residentId}/predictionsd
 ❌ GET  /api/v1/predictive-analytics/residents/{residentId}/consumption-history
 ```
 
