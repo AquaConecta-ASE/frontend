@@ -42,7 +42,7 @@ export class ResidentSummaryComponent implements OnInit {
   residentData: Resident | null = null;
   subscriptions = new MatTableDataSource<SubscriptionModel>();
 
-  displayedColumns: string[] = ['id', 'deviceId', 'startDate', 'endDate', 'status'];
+  displayedColumns: string[] = ['id', 'deviceId', 'waterTankSize', 'startDate', 'endDate', 'status'];
   isLoadingResults = true;
   error: string | null = null;
   constructor(
@@ -78,6 +78,26 @@ export class ResidentSummaryComponent implements OnInit {
     // Cargar suscripciones asociadas
     this.subscriptionService.getSubscriptionsByResidentId(residentId).subscribe({
       next: (subscriptions) => {
+        console.log('');
+        console.log('📋📋📋 SUSCRIPCIONES DEL RESIDENTE 📋📋📋');
+        console.log('🆔 Resident ID:', residentId);
+        console.log('📊 Total de suscripciones:', subscriptions.length);
+        console.log('');
+        console.log('📦 Datos completos de las suscripciones:');
+        console.log(JSON.stringify(subscriptions, null, 2));
+        console.log('');
+        
+        subscriptions.forEach((sub, index) => {
+          console.log(`📌 Suscripción ${index + 1}:`);
+          console.log('  - ID:', sub.id);
+          console.log('  - Device ID:', sub.deviceId);
+          console.log('  - Water Tank Size:', sub.waterTankSize ? `${sub.waterTankSize} L` : 'N/A');
+          console.log('  - Start Date:', sub.startDate);
+          console.log('  - End Date:', sub.endDate);
+          console.log('  - Status:', sub.status);
+          console.log('');
+        });
+        
         this.subscriptions.data = subscriptions;
         this.subscriptions.paginator = this.paginator;
         this.subscriptions.sort = this.sort;
