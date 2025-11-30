@@ -1,0 +1,93 @@
+/* Profile Warning Banner */
+.profile-warning-banner {
+  width: 100%;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-left: 4px solid #f59e0b;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.warning-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.warning-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.warning-text {
+  flex: 1;
+  text-align: left;
+}
+
+.warning-text strong {
+  display: block;
+  color: #92400e;
+  font-size: 1.1rem;
+  margin-bottom: 0.25rem;
+  font-family: 'Inter-Bold', sans-serif;
+}
+
+.warning-text p {
+  color: #78350f;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.btn-complete-profile {
+  background: #f59e0b;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Inter-SemiBold', sans-serif;
+  flex-shrink: 0;
+}
+
+.btn-complete-profile:hover {
+  background: #d97706;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.btn-close-warning {
+  background: transparent;
+  border: none;
+  color: #92400e;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.btn-close-warning:hover {
+  background: rgba(146, 64, 14, 0.1);
+}
