@@ -1,5 +1,20 @@
 <app-header-content></app-header-content>
 
+<!-- Profile Incomplete Warning Banner -->
+<div class="profile-warning-banner" *ngIf="showProfileWarning">
+  <div class="warning-content">
+    <span class="warning-icon">⚠️</span>
+    <div class="warning-text">
+      <strong>{{ translate('complete_your_profile') || 'Complete su perfil' }}</strong>
+      <p>{{ translate('profile_incomplete_message') || 'Su perfil fue creado con información básica. Por favor complete sus datos para una mejor experiencia.' }}</p>
+    </div>
+    <button class="btn-complete-profile" (click)="goToProfile()">
+      {{ translate('complete_profile') || 'Completar Perfil' }}
+    </button>
+    <button class="btn-close-warning" (click)="closeProfileWarning()">✕</button>
+  </div>
+</div>
+
 <div class="home-container">
   <!-- Welcome Section -->
   <div class="welcome-section">    <div class="welcome-content">
@@ -45,11 +60,15 @@
             <p class="card-description">
               {{ translate('active_water_requests') }}
             </p>
-            <div class="status-badge status-pending">{{waterRequestsPending || '0'}} {{ translate('pending') }}</div>
+            <div class="status-badge status-pending" *ngIf="!isLoadingWaterRequests">
+              {{waterRequestsPending ?? '—'}} {{ translate('pending') }}
+            </div>
+            <div class="status-badge status-pending" *ngIf="isLoadingWaterRequests">⏳ ...</div>
             <a class="card-action">{{ translate('view_all_requests') }}</a>
           </div>
           <div class="card-metric">
-            <span class="card-number">{{waterRequestsCount || '0'}}</span>
+            <span class="card-number" *ngIf="!isLoadingWaterRequests">{{waterRequestsCount ?? '—'}}</span>
+            <span class="card-number" *ngIf="isLoadingWaterRequests">⏳</span>
             <span class="card-label">{{ translate('total_requests') }}</span>
           </div>
         </div>
@@ -65,11 +84,15 @@
             <p class="card-description">
               {{ translate('maintenance_reports') }}
             </p>
-            <div class="status-badge status-active">{{reportsActive || '0'}} {{ translate('active') }}</div>
+            <div class="status-badge status-active" *ngIf="!isLoadingReports">
+              {{reportsActive ?? '—'}} {{ translate('active') }}
+            </div>
+            <div class="status-badge status-active" *ngIf="isLoadingReports">⏳ ...</div>
             <a class="card-action">{{ translate('view_all_reports') }}</a>
           </div>
           <div class="card-metric">
-            <span class="card-number">{{reportsCount || '0'}}</span>
+            <span class="card-number" *ngIf="!isLoadingReports">{{reportsCount ?? '—'}}</span>
+            <span class="card-number" *ngIf="isLoadingReports">⏳</span>
             <span class="card-label">{{ translate('total_reports') }}</span>
           </div>
         </div>
@@ -89,7 +112,8 @@
             <a class="card-action">{{ translate('view_residents_list') }}</a>
           </div>
           <div class="card-metric">
-            <span class="card-number">{{residentsCount || '0'}}</span>
+            <span class="card-number" *ngIf="!isLoadingResidents">{{residentsCount ?? '—'}}</span>
+            <span class="card-number" *ngIf="isLoadingResidents">⏳</span>
             <span class="card-label">{{ translate('registered') }}</span>
           </div>
         </div>
@@ -109,7 +133,8 @@
             <a class="card-action">{{ translate('view_device_history') }}</a>
           </div>
           <div class="card-metric">
-            <span class="card-number">{{deviceEventsCount || '0'}}</span>
+            <span class="card-number" *ngIf="!isLoadingDevices">{{deviceEventsCount ?? '—'}}</span>
+            <span class="card-number" *ngIf="isLoadingDevices">⏳</span>
             <span class="card-label">{{ translate('device_events') }}</span>
           </div>
         </div>
