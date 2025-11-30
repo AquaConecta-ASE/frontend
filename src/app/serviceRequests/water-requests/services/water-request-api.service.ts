@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import {HttpClient} from "@angular/common/http";
-import { Observable, throwError } from 'rxjs';
+import { Observable } from 'rxjs';
 import {BaseService} from '../../../shared/services/base.service';
 import {WaterRequestModel} from '../model/water-request.model';
 
@@ -14,13 +14,20 @@ export class WaterRequestApiService extends BaseService<WaterRequestModel> {
     this.resourceEndpoint = 'water-supply-requests';
   }
 
+  /**
+   * Obtiene el perfil del proveedor autenticado
+   * Usa el endpoint /providers/me/profile con el token JWT
+   * Devuelve: { id (providerId), userId, taxName, ruc, email, phone, etc. }
+   */
   getProviderProfile(): Observable<any> {
-    const storedUser = localStorage.getItem('auth_user');
-    if (!storedUser) {
-      return throwError(() => new Error('No user found in localStorage'));
-    }
-    const user = JSON.parse(storedUser);
-    return this.http.get<any>(`${this.basePath}providers/${user.id}/profiles`, this.httpOptions);
+    console.log('=== GET PROVIDER PROFILE (Water Requests) ===');
+    console.log('📡 Usando endpoint: /providers/me/profile');
+    console.log('🔑 Autenticación: Token JWT en headers');
+    
+    const endpoint = `${this.basePath}providers/me/profile`;
+    console.log('🌐 URL completa:', endpoint);
+    
+    return this.http.get<any>(endpoint, this.httpOptions);
   }
 
   getAllRequests(): Observable<WaterRequestModel[]> {

@@ -1,0 +1,372 @@
+<app-header-content></app-header-content>
+
+<div class="pa-container">
+  <div class="pa-header">
+    <h1>Predictive Analytics</h1>
+    <p>Predicciones de consumo y recomendaciones de reabastecimiento para tus residentes.</p>
+  </div>
+
+  <!-- Resident Selection Section -->
+  <div class="resident-selection-section">
+    <button class="btn-select-resident" (click)="openResidentSelector()">
+      <span *ngIf="!selectedResident">+ Select Resident</span>
+      <span *ngIf="selectedResident">
+        <strong>{{ selectedResidentName() }}</strong>
+        <span style="margin-left: 8px; font-size: 0.9em; opacity: 0.8;">
+          (ID: {{ selectedResident.resident.id }})
+        </span>
+      </span>
+    </button>
+
+    <button *ngIf="selectedResident" class="btn-clear" (click)="clearSelection()">
+      Clear Selection
+    </button>
+  </div>
+
+  <!-- Loading / Error States -->
+  <div *ngIf="isLoading" class="pa-loading">
+    <div class="spinner"></div>
+    <p>Loading prediction data...</p>
+  </div>
+  <div *ngIf="loadError" class="pa-error">
+    <p>{{ loadError }}</p>
+  </div>
+
+  <!-- Subscription Selector (when resident has multiple subscriptions) -->
+  <div *ngIf="!isLoading && selectedResident && allSubscriptions.length > 0" class="subscription-selector">
+    <h3>Select Subscription/Tank ({{ allSubscriptions.length }} total)</h3>
+    <div class="subscription-grid">
+      <!-- Show all subscriptions from resident -->
+      <div 
+        *ngFor="let subscription of allSubscriptions" 
+        class="subscription-card"
+        [class.selected]="subscription.id === selectedSubscriptionId"
+        [class.no-prediction]="!hasPrediction(subscription.id)"
+        (click)="selectOrGenerateSubscription(subscription)"
+      >
+        <div class="subscription-header">
+          <h4>Subscription #{{ subscription.id }}</h4>
+          <span *ngIf="hasPrediction(subscription.id)" 
+                class="subscription-status" 
+                [class]="'status-' + (getPredictionForSubscription(subscription.id)?.status || 'active').toLowerCase()">
+            {{ getPredictionForSubscription(subscription.id)?.status || 'ACTIVE' }}
+          </span>
+          <span *ngIf="!hasPrediction(subscription.id)" class="subscription-status status-pending">
+            NO PREDICTION
+          </span>
+        </div>
+        
+        <!-- Show stats if prediction exists -->
+        <div *ngIf="hasPrediction(subscription.id)" class="subscription-stats">
+          <div class="stat">
+            <span class="stat-value">{{ getPredictionForSubscription(subscription.id)?.currentWaterLevel | number:'1.0-0' }}L</span>
+            <span class="stat-label">Current Level</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value">{{ getPredictionForSubscription(subscription.id)?.predictedDaysUntilEmpty }}</span>
+            <span class="stat-label">Days Left</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value">{{ getPredictionForSubscription(subscription.id)?.predictedConsumptionPerDay | number:'1.0-1' }}</span>
+            <span class="stat-label">L/day</span>
+          </div>
+        </div>
+        
+        <!-- Show subscription info if no prediction -->
+        <div *ngIf="!hasPrediction(subscription.id)" class="subscription-info">
+          <p class="info-text">Device: #D{{ subscription.deviceId }}</p>
+          <p class="info-text">Tank Size: {{ subscription.waterTankSize || 'N/A' }}L</p>
+          <p class="info-text">Status: {{ subscription.status }}</p>
+        </div>
+        
+        <button 
+          class="btn-generate-sub" 
+          (click)="generatePredictionForSubscription(subscription.id); $event.stopPropagation()"
+        >
+          {{ hasPrediction(subscription.id) ? 'Regenerate' : 'Generate Prediction' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content - Only shows when subscription selected -->
+  <div *ngIf="!isLoading && !loadError && selectedPrediction" class="pa-content">
+    <div class="pa-controls">
+      <div class="selected-subscription-info">
+        <h3>Viewing: {{ selectedPrediction.subscriptionId ? 'Subscription #' + selectedPrediction.subscriptionId : 'Prediction for Resident #' + selectedPrediction.residentId }}</h3>
+        <span class="subscription-name" *ngIf="selectedPrediction.subscriptionName">
+          {{ selectedPrediction.subscriptionName }}
+        </span>
+        <span *ngIf="!selectedPrediction.subscriptionId" style="font-size: 0.85rem; color: #ef4444; margin-top: 0.5rem;">
+          Warning: Backend is not providing subscriptionId. Some features may be limited.
+        </span>
+      </div>
+
+      <label style="display:flex; align-items:center; gap: 8px;">
+        <input 
+          type="checkbox" 
+          [checked]="showRemaining" 
+          (change)="toggleRemaining($any($event.target).checked)"
+        />
+        <span>Show Remaining Stock (L)</span>
+      </label>
+
+      <button 
+        *ngIf="selectedPrediction.subscriptionId"
+        class="btn-generate" 
+        (click)="generatePredictionForSubscription(selectedPrediction.subscriptionId)"
+      >
+        Regenerate Prediction
+      </button>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="pa-summary-cards">
+      <div class="card">
+        <h3>Current Water Level</h3>
+        <p class="value">{{ selectedPrediction.currentWaterLevel | number:'1.0-2' }} L</p>
+      </div>
+      <div class="card">
+        <h3>Daily Avg Consumption</h3>
+        <p class="value">{{ selectedPrediction.predictedConsumptionPerDay | number:'1.0-2' }} L/day</p>
+      </div>
+      <div class="card" [class.alert]="(selectedPrediction.predictedDaysUntilEmpty ?? 999) <= 5">
+        <h3>Days Until Empty</h3>
+        <p class="value">{{ selectedPrediction.predictedDaysUntilEmpty }} days</p>
+      </div>
+      <div class="card">
+        <h3>Predicted Runout Date</h3>
+        <p class="value">{{ selectedPrediction.waterRunoutDate || '-' }}</p>
+      </div>
+      <div class="card">
+        <h3>Total 7-Day Consumption</h3>
+        <p class="value">{{ selectedPrediction.totalPredictedConsumption7Days | number:'1.0-2' }} L</p>
+      </div>
+      <div class="card">
+        <h3>Recommended Action</h3>
+        <p class="badge badge-{{ selectedPrediction.recommendedAction || 'none' }}">
+          {{ selectedPrediction.recommendedAction || 'none' }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="pa-charts">
+      <div class="chart-header">
+        <h2>7-Day Consumption Forecast</h2>
+        <span class="confidence">Model Confidence: {{ formatConfidence(selectedPrediction) }}</span>
+      </div>
+      <div class="chart-wrapper">
+        <canvas #paChart></canvas>
+      </div>
+    </div>
+
+    <!-- Refill Information -->
+    <div *ngIf="selectedPrediction.refillInfo" class="refill-info">
+      <h3>Refill Information</h3>
+      <div class="refill-grid">
+        <div class="refill-item">
+          <span class="label">Refills (Last 30 days)</span>
+          <span class="value">{{ selectedPrediction.refillInfo.refillsLast30Days }}</span>
+        </div>
+        <div class="refill-item">
+          <span class="label">Last Refill Date</span>
+          <span class="value">{{ selectedPrediction.refillInfo.lastRefillDate }}</span>
+        </div>
+        <div class="refill-item">
+          <span class="label">Days Since Refill</span>
+          <span class="value">{{ selectedPrediction.refillInfo.daysSinceLastRefill }} days</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Prediction History Section -->
+    <div *ngIf="selectedPrediction && selectedPrediction.subscriptionId" class="prediction-history-section">
+      <div class="history-header">
+        <h3>Prediction History (Subscription #{{ selectedPrediction.subscriptionId }})</h3>
+        <button class="btn-toggle-history" (click)="togglePredictionHistory()">
+          {{ showPredictionHistory ? '▼ Hide History' : '▶ Show History' }}
+        </button>
+      </div>
+
+      <div *ngIf="showPredictionHistory" class="prediction-history">
+        <div *ngIf="predictionHistory.length === 0" class="empty-history">
+          <p>No historical predictions available yet.</p>
+        </div>
+
+        <div *ngIf="predictionHistory.length > 0" class="history-grid">
+          <div 
+            *ngFor="let histPred of predictionHistory" 
+            class="history-card"
+            [class.active-prediction]="histPred.status === 'ACTIVE'"
+            [class.outdated-prediction]="histPred.status === 'OUTDATED'"
+            (click)="viewHistoricalPrediction(histPred)"
+          >
+            <div class="history-card-header">
+              <div class="history-status-badge" [class]="'status-' + (histPred.status || 'active').toLowerCase()">
+                {{ histPred.status || 'ACTIVE' }}
+              </div>
+              <span class="history-date">{{ histPred.predictionDate | date:'short' }}</span>
+            </div>
+
+            <div class="history-card-body">
+              <div class="history-stat">
+                <span class="history-label">Current Level</span>
+                <span class="history-value">{{ histPred.currentWaterLevel | number:'1.0-1' }} L</span>
+              </div>
+              <div class="history-stat">
+                <span class="history-label">Daily Avg</span>
+                <span class="history-value">{{ histPred.predictedConsumptionPerDay | number:'1.0-2' }} L/day</span>
+              </div>
+              <div class="history-stat">
+                <span class="history-label">Days Until Empty</span>
+                <span class="history-value">{{ histPred.predictedDaysUntilEmpty }} days</span>
+              </div>
+              <div class="history-stat">
+                <span class="history-label">Runout Date</span>
+                <span class="history-value">{{ histPred.waterRunoutDate }}</span>
+              </div>
+              <div class="history-stat">
+                <span class="history-label">7-Day Total</span>
+                <span class="history-value">{{ histPred.totalPredictedConsumption7Days | number:'1.0-1' }} L</span>
+              </div>
+              <div class="history-stat">
+                <span class="history-label">Confidence</span>
+                <span class="history-value">{{ formatConfidence(histPred) }}</span>
+              </div>
+            </div>
+
+            <div class="history-card-footer">
+              <button class="btn-view-prediction" (click)="viewHistoricalPrediction(histPred); $event.stopPropagation()">
+                View Details
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Consumption History Table -->
+    
+    <div *ngIf="consumptionHistory && consumptionHistory.length > 0" class="consumption-history">
+      <h3>Consumption History{{ selectedPrediction.subscriptionId ? ' (Subscription #' + selectedPrediction.subscriptionId + ')' : '' }}</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Consumption (L)</th>
+            <th>Initial Level (L)</th>
+            <th>Final Level (L)</th>
+            <th>Quality</th>
+            <th>Refill</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let record of consumptionHistory | slice:0:10">
+            <td>{{ record.consumptionDate }}</td>
+            <td>{{ record.consumption | number:'1.0-2' }}</td>
+            <td>{{ record.initialLevel | number:'1.0-2' }}</td>
+            <td>{{ record.finalLevel | number:'1.0-2' }}</td>
+            <td>{{ record.waterQuality }}</td>
+            <td>{{ record.isRefill ? '✓' : '-' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+  </div>
+
+  <!-- Empty State - No resident selected -->
+  <div *ngIf="!isLoading && !selectedResident" class="empty-state">
+    <div class="empty-icon">�</div>
+    <h2>No Resident Selected</h2>
+    <p>Select a resident to view their water consumption predictions and analytics.</p>
+    <button class="btn-primary" (click)="openResidentSelector()">
+      Select Resident
+    </button>
+  </div>
+
+  <!-- No Prediction State - Resident selected but no predictions -->
+  <div *ngIf="!isLoading && selectedResident && allPredictions.length === 0" class="empty-state">
+    <div class="empty-icon">📈</div>
+    <h2>No Predictions Available</h2>
+    <p>No prediction data found for <strong>{{ selectedResidentName() }}</strong>.</p>
+    <p style="font-size: 0.9em; color: #64748b; margin-top: 8px;">
+      <strong>Note:</strong> The system requires at least 7 days of consumption data per subscription to generate predictions.
+    </p>
+
+    <!-- Show subscriptions to generate predictions -->
+    <div *ngIf="selectedResident.subscriptions && selectedResident.subscriptions.length > 0" class="generate-predictions-section">
+      <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; font-family: 'Inter-Bold', sans-serif; color: #2c3e50;">
+        Generate Predictions for Subscriptions
+      </h3>
+      <div class="subscription-generate-grid">
+        <div *ngFor="let subscription of selectedResident.subscriptions" class="subscription-generate-card">
+          <div class="sub-gen-header">
+            <h4>Subscription #{{ subscription.id }}</h4>
+            <span class="sub-gen-badge">{{ subscription.status || 'ACTIVE' }}</span>
+          </div>
+          <div class="sub-gen-info">
+            <p *ngIf="subscription.deviceId">
+              <span class="label">Device/Sensor ID:</span>
+              <span class="value">{{ subscription.deviceId }}</span>
+            </p>
+            <p>
+              <span class="label">Start Date:</span>
+              <span class="value">{{ subscription.startDate | date:'short' }}</span>
+            </p>
+          </div>
+          <button 
+            class="btn-generate-first" 
+            (click)="generatePredictionForSubscription(subscription.id)"
+            [disabled]="isLoading">
+            {{ isLoading ? 'Generating...' : 'Generate First Prediction' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- No subscriptions available -->
+    <div *ngIf="!selectedResident.subscriptions || selectedResident.subscriptions.length === 0" class="no-subscriptions">
+      <p style="font-size: 0.95em; color: #ef4444; margin-top: 1rem;">
+        Warning: This resident has no subscriptions configured. Please add subscriptions first.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Resident Selector Modal -->
+<div *ngIf="showResidentSelector" class="modal-overlay" (click)="closeResidentSelector()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Select Resident</h2>
+      <button class="btn-close" (click)="closeResidentSelector()">✕</button>
+    </div>
+    
+    <div *ngIf="residents.length === 0" class="modal-empty">
+      <p>No residents available. Please ensure residents are configured in the system.</p>
+    </div>
+
+    <div class="resident-grid">
+      <div 
+        *ngFor="let resident of residents" 
+        class="resident-card"
+        (click)="selectResidentFromList(resident)"
+      >
+        <div class="resident-avatar">
+          {{ getResidentInitials(resident) }}
+        </div>
+        <div class="resident-details">
+          <h3>{{ resident.resident.firstName }} {{ resident.resident.lastName }}</h3>
+          <p class="resident-id">ID: {{ resident.resident.id }}</p>
+          <p class="resident-address" *ngIf="resident.resident.address">
+            {{ resident.resident.address }}
+          </p>
+          <p class="resident-subscriptions" *ngIf="resident.subscriptions && resident.subscriptions.length > 0">
+            {{ resident.subscriptions.length }} subscription(s)
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

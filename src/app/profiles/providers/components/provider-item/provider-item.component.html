@@ -3,19 +3,21 @@
 
 <div class="profile-container">
     <div class="profile-header">
-        <h1 class="profile-title">{{ 'provider_profile' | translate }}</h1>
+        <h1 class="profile-title">
+            {{ profileExists ? ('provider_profile' | translate) : 'Crear Perfil de Proveedor' }}
+        </h1>
         <div class="action-buttons">
-            <button *ngIf="!isEditing" class="btn-edit" (click)="toggleEditMode()">
+            <button *ngIf="!isEditing && profileExists" class="btn-edit" (click)="toggleEditMode()">
                 <i class="fa fa-pencil-alt"></i> {{ 'edit_profile' | translate }}
             </button>
             <div *ngIf="isEditing" class="edit-buttons">
-                <button class="btn-cancel" (click)="toggleEditMode()">
+                <button *ngIf="profileExists" class="btn-cancel" (click)="toggleEditMode()">
                     <i class="fa fa-times"></i> {{ 'cancel' | translate }}
                 </button>
                 <button class="btn-save" [disabled]="profileForm.invalid || submitInProgress" (click)="onSubmit()">
                     <i *ngIf="!submitInProgress" class="fa fa-check"></i>
                     <i *ngIf="submitInProgress" class="fa fa-spinner fa-spin"></i>
-                    {{ submitInProgress ? ('saving' | translate) : ('save_changes' | translate) }}
+                    {{ submitInProgress ? ('saving' | translate) : (profileExists ? ('save_changes' | translate) : 'Crear Perfil') }}
                 </button>
             </div>
         </div>
@@ -43,31 +45,35 @@
                 <!-- First column -->
                 <div class="form-column">
                     <div class="form-group">
-                        <label for="taxName">{{ 'company_name_label' | translate }}</label>
-                        <input type="text" id="taxName" formControlName="taxName" class="form-control"
-                            [ngClass]="{'invalid': hasError('taxName', 'required')}">
-                        <div class="error-message" *ngIf="hasError('taxName', 'required')">
-                            {{ 'company_name_required_error' | translate }}                        </div>
+                        <label for="companyName">Company Name *</label>
+                        <input type="text" id="companyName" formControlName="companyName" class="form-control"
+                            [ngClass]="{'invalid': hasError('companyName', 'required')}">
+                        <div class="error-message" *ngIf="hasError('companyName', 'required')">
+                            El nombre de la empresa es requerido
+                        </div>
+                        <div class="error-message" *ngIf="hasError('companyName', 'minlength')">
+                            Debe tener al menos 3 caracteres
+                        </div>
                     </div>
 
                     <div class="form-group">
-                        <label for="ruc">{{ 'ruc' | translate }}</label>
-                        <input type="text" id="ruc" formControlName="ruc" class="form-control"
-                            [ngClass]="{'invalid': hasError('ruc', 'required') || hasError('ruc', 'pattern')}">
-                        <div class="error-message" *ngIf="hasError('ruc', 'required')">
+                        <label for="documentType">Tipo de Documento *</label>
+                        <select id="documentType" formControlName="documentType" class="form-control">
+                            <option value="RUC">RUC</option>
+                            <option value="DNI">DNI</option>
+                            <option value="CE">Carnet de Extranjería</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="documentNumber">Número de Documento (RUC) *</label>
+                        <input type="text" id="documentNumber" formControlName="documentNumber" class="form-control"
+                            [ngClass]="{'invalid': hasError('documentNumber', 'required') || hasError('documentNumber', 'pattern')}">
+                        <div class="error-message" *ngIf="hasError('documentNumber', 'required')">
                             {{ 'ruc_required_error' | translate }}
                         </div>
-                        <div class="error-message" *ngIf="hasError('ruc', 'pattern')">
+                        <div class="error-message" *ngIf="hasError('documentNumber', 'pattern')">
                             {{ 'ruc_pattern_error' | translate }}
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="sensors_number">{{ 'number_sensors_label' | translate }}</label>
-                        <input type="number" id="sensors_number" formControlName="sensors_number" class="form-control"
-                            [ngClass]="{'invalid': hasError('sensors_number', 'min')}">
-                        <div class="error-message" *ngIf="hasError('sensors_number', 'min')">
-                            {{ 'sensors_positive_error' | translate }}
                         </div>
                     </div>
                 </div>
@@ -75,7 +81,7 @@
                 <!-- Second column -->
                 <div class="form-column">
                     <div class="form-group">
-                        <label for="email">{{ 'email' | translate }}</label>
+                        <label for="email">{{ 'email' | translate }} *</label>
                         <input type="email" id="email" formControlName="email" class="form-control"
                             [ngClass]="{'invalid': hasError('email', 'required') || hasError('email', 'email')}">
                         <div class="error-message" *ngIf="hasError('email', 'required')">
@@ -87,7 +93,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="phone">{{ 'phone' | translate }}</label>
+                        <label for="phone">{{ 'phone' | translate }} *</label>
                         <input type="text" id="phone" formControlName="phone" class="form-control"
                             [ngClass]="{'invalid': hasError('phone', 'required') || hasError('phone', 'pattern')}">
                         <div class="error-message" *ngIf="hasError('phone', 'required')">
@@ -99,7 +105,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="address">{{ 'address' | translate }}</label>
+                        <label for="address">{{ 'address' | translate }} *</label>
                         <input type="text" id="address" formControlName="address" class="form-control"
                             [ngClass]="{'invalid': hasError('address', 'required')}">
                         <div class="error-message" *ngIf="hasError('address', 'required')">

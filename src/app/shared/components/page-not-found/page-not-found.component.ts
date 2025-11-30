@@ -23,6 +23,24 @@ export class PageNotFoundComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    // Verificar si estamos en proceso de autenticación con Auth0
+    const authMethod = localStorage.getItem('auth_method');
+    const currentPath = window.location.pathname;
+    
+    // Si estamos en callback o hay un proceso de Auth0 activo, esperar más tiempo
+    if (currentPath.includes('/callback') || authMethod === 'auth0') {
+      console.log('Proceso de Auth0 detectado, esperando más tiempo...');
+      setTimeout(() => {
+        this.checkUserAndRedirect();
+      }, 2000); // Esperar 2 segundos para Auth0
+      return;
+    }
+    
+    // Para login tradicional, proceder normalmente
+    this.checkUserAndRedirect();
+  }
+
+  private checkUserAndRedirect(): void {
     // Subscribe to current user
     this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
@@ -41,10 +59,18 @@ export class PageNotFoundComponent implements OnInit {
 
   private loadUserFromStorage(): void {
     try {
+      // Intentar cargar de diferentes fuentes
       const storedUser = localStorage.getItem('auth_user') || localStorage.getItem('USER_KEY');
+      const authMethod = localStorage.getItem('auth_method');
+      
       if (storedUser) {
         this.currentUser = JSON.parse(storedUser);
         console.log('Usuario cargado desde localStorage:', this.currentUser);
+        console.log('Método de autenticación:', authMethod);
+      } else {
+        console.log('No se encontró usuario en localStorage');
+        console.log('auth_user:', localStorage.getItem('auth_user'));
+        console.log('auth_method:', authMethod);
       }
     } catch (error) {
       console.error('Error al cargar usuario desde localStorage:', error);
