@@ -80,47 +80,146 @@ export class ProviderItemComponent implements OnInit {
       console.log('=== CARGANDO PERFIL ===');
       const user = JSON.parse(storedUser || '{}');
       console.log('Usuario en localStorage:', user);
-      console.log('ID del usuario:', user.id);
-      console.log('Provider ID:', user.providerId);
-      console.log('Auth0 ID:', user.auth0Id);
+      console.log('  - userId:', user.userId);
+      console.log('  - providerId:', user.providerId);
+      console.log('  - profileIncomplete:', user.profileIncomplete);
+      console.log('  - email:', user.email);
 
-      // Intentar obtener el perfil existente
-      console.log('Obteniendo perfil del usuario autenticado...');
+      // SIEMPRE intentar obtener el perfil del backend primero
+      // El endpoint /providers/me/profile usa el token JWT para identificar al usuario
+      console.log('');
+      console.log('🔍🔍🔍 INTENTANDO OBTENER PERFIL DEL BACKEND 🔍🔍🔍');
+      console.log('📡 Endpoint que se llamará: /providers/me/profile');
+      console.log('🔑 Autenticación: JWT token de Auth0 en headers');
+      
       this.providerService.getMyProfile().subscribe({
         next: (profileData) => {
           // ✅ PERFIL EXISTE
-          console.log('✅ Perfil encontrado:', profileData);
+          console.log('');
+          console.log('✅✅✅ PERFIL RECIBIDO EXITOSAMENTE ✅✅✅');
+          console.log('📦 profileData completo:', profileData);
+          console.log('📦 profileData JSON:', JSON.stringify(profileData, null, 2));
+          console.log('');
+          console.log('🆔 EXTRAYENDO IDs:');
+          console.log('  - profileData.id (PROVIDER ID):', profileData.id);
+          console.log('  - profileData.userId:', profileData.userId);
+          console.log('');
+          console.log('📋 EXTRAYENDO DATOS DEL PERFIL:');
+          console.log('  - taxName:', profileData.taxName);
+          console.log('  - ruc:', profileData.ruc);
+          console.log('  - firstName:', profileData.firstName);
+          console.log('  - lastName:', profileData.lastName);
+          console.log('  - email:', profileData.email);
+          console.log('  - phone:', profileData.phone);
+          console.log('  - direction:', profileData.direction);
+          console.log('  - documentNumber:', profileData.documentNumber);
+          console.log('  - documentType:', profileData.documentType);
+          
           this.profileExists = true;
           this.provider = profileData;
-          console.log('ID del perfil:', this.provider.id);
+          console.log('ID del perfil (providerId):', this.provider.id);
+          
+          // Guardar/actualizar el providerId en localStorage
+          const storedUser = localStorage.getItem('auth_user');
+          if (storedUser) {
+            const user = JSON.parse(storedUser);
+            console.log('');
+            console.log('💾 ACTUALIZANDO LOCALSTORAGE');
+            console.log('📋 Usuario ANTES de actualizar:', {
+              userId: user.userId,
+              providerId: user.providerId,
+              email: user.email
+            });
+            
+            const updatedUser = {
+              ...user,
+              providerId: profileData.id, // ← El 'id' de la respuesta es el providerId
+              userId: profileData.userId,
+              taxName: profileData.taxName,
+              ruc: profileData.ruc,
+              firstName: profileData.firstName,
+              lastName: profileData.lastName,
+              email: profileData.email,
+              phone: profileData.phone,
+              direction: profileData.direction,
+              documentNumber: profileData.documentNumber,
+              documentType: profileData.documentType,
+              companyName: profileData.taxName || profileData.firstName
+            };
+            
+            localStorage.setItem('auth_user', JSON.stringify(updatedUser));
+            
+            console.log('📋 Usuario DESPUÉS de actualizar:', {
+              userId: updatedUser.userId,
+              providerId: updatedUser.providerId,
+              email: updatedUser.email,
+              taxName: updatedUser.taxName
+            });
+            console.log('✅ providerId guardado en localStorage:', profileData.id);
+          }
+          
           this.populateForm();
+          
+          // Si el perfil está marcado como incompleto, activar edición automáticamente
+          if (user.profileIncomplete) {
+            console.log('⚠️ Perfil incompleto detectado - Activando modo edición');
+            this.isEditing = true;
+            this.profileForm.enable();
+            this.snackBar.open('Por favor complete los datos faltantes de su perfil', 'Cerrar', {
+              duration: 5000,
+              panelClass: 'warning-snackbar'
+            });
+          }
+          
           this.isLoading = false;
         },
         error: (error) => {
-          console.error('Error al obtener los datos del perfil:', error);
+          console.error('Error al obtener perfil del backend:', error);
           
           if (error.status === 404) {
-            // ⚠️ PERFIL NO EXISTE - Habilitar modo creación
-            console.log('⚠️ Perfil no encontrado (404) - Modo CREACIÓN activado');
+            // ⚠️ PERFIL NO EXISTE - Usar datos de localStorage
+            console.log('⚠️ Backend devolvió 404 - Usando datos de localStorage');
             this.profileExists = false;
-            this.isEditing = true; // Activar edición automáticamente
-            this.profileForm.enable(); // Habilitar formulario
+            this.isEditing = true;
+            this.profileForm.enable();
             
-            // Prellenar con datos del usuario Auth0 si están disponibles
-            const user = JSON.parse(storedUser || '{}');
+            // Prellenar con datos que tenemos en localStorage
             this.profileForm.patchValue({
               email: user.email || '',
-              companyName: user.name || '',
-              documentNumber: '',
-              documentType: 'RUC',
-              phone: '',
-              address: ''
+              companyName: user.companyName || user.firstName || user.name || '',
+              documentNumber: user.documentNumber || user.ruc || '',
+              documentType: user.documentType || 'RUC',
+              phone: user.phone || '',
+              address: user.direction || ''
             });
             
             this.isLoading = false;
-            this.snackBar.open('No se encontró un perfil. Por favor, complete sus datos.', 'Cerrar', {
+            this.snackBar.open('Complete los datos de su perfil', 'Cerrar', {
               duration: 5000,
-              panelClass: 'warning-snackbar'
+              panelClass: 'info-snackbar'
+            });
+          } else if (error.status === 500) {
+            // Error 500 - El backend puede estar procesando, usar datos de localStorage
+            console.log('⚠️ BFF devolvió 500 - El backend puede estar procesando');
+            console.log('   Usando datos de localStorage temporalmente');
+            this.profileExists = false;
+            this.isEditing = true;
+            this.profileForm.enable();
+            
+            // Prellenar con datos que tenemos
+            this.profileForm.patchValue({
+              email: user.email || '',
+              companyName: user.companyName || user.firstName || user.name || '',
+              documentNumber: user.documentNumber || user.ruc || '',
+              documentType: user.documentType || 'RUC',
+              phone: user.phone || '',
+              address: user.direction || ''
+            });
+            
+            this.isLoading = false;
+            this.snackBar.open('Complete los datos de su perfil. El sistema está sincronizando su cuenta.', 'Cerrar', {
+              duration: 7000,
+              panelClass: 'info-snackbar'
             });
           } else {
             // Otro tipo de error
@@ -234,10 +333,11 @@ export class ProviderItemComponent implements OnInit {
                         // - providerId: ID de tabla providers (para GET /providers/{id}/profiles)
                         const updatedUser = {
                             ...user,
-                            id: createdProfile.userId || user.id,  // ← userId de la tabla users
-                            userId: createdProfile.userId || user.id, // Explícito
+                            // ✅ MANTENER los IDs que ya existen o usar los del perfil creado
+                            userId: createdProfile.userId || user.userId, // ← userId de la tabla users
+                            providerId: createdProfile.providerId || null, // ← ID de tabla providers (NO usar createdProfile.id que es el profileId!)
+                            id: createdProfile.userId || user.userId,  // ← userId como alias
                             profileId: createdProfile.id, // ← ID de tabla profiles (createdProfile.id es el profile)
-                            providerId: createdProfile.providerId || createdProfile.id, // ← ID de tabla providers
                             companyName: createdProfile.firstName || createdProfile.taxName || newProfileData.firstName,
                             taxName: createdProfile.taxName || '',
                             email: createdProfile.email || newProfileData.email,
@@ -247,7 +347,8 @@ export class ProviderItemComponent implements OnInit {
                             documentNumber: createdProfile.documentNumber || '',
                             documentType: createdProfile.documentType || '',
                             firstName: createdProfile.firstName || '',
-                            lastName: createdProfile.lastName || ''
+                            lastName: createdProfile.lastName || '',
+                            profileIncomplete: undefined // ✅ Eliminar flag de perfil incompleto al crear
                         };
                         
                         localStorage.setItem('auth_user', JSON.stringify(updatedUser));
@@ -257,6 +358,7 @@ export class ProviderItemComponent implements OnInit {
                         console.log('  - user.profileId (Profile ID):', updatedUser.profileId);
                         console.log('  - user.providerId (Provider ID):', updatedUser.providerId);
                         console.log('  - user.auth0Id:', updatedUser.auth0Id);
+                        console.log('  - profileIncomplete eliminado');
                         
                         // Verificar que se guardó
                         const verifyUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
@@ -264,6 +366,7 @@ export class ProviderItemComponent implements OnInit {
                         console.log('  - userId:', verifyUser.userId);
                         console.log('  - profileId:', verifyUser.profileId);
                         console.log('  - providerId:', verifyUser.providerId);
+                        console.log('  - profileIncomplete:', verifyUser.profileIncomplete);
                     }
 
                     this.snackBar.open('Perfil creado exitosamente', 'Cerrar', {
@@ -328,6 +431,29 @@ export class ProviderItemComponent implements OnInit {
                         taxName: updatedProviderData.taxName,
                         ruc: updatedProviderData.ruc
                     };
+                    
+                    // 🆕 Actualizar localStorage y eliminar flag profileIncomplete
+                    const storedUser = localStorage.getItem('auth_user');
+                    if (storedUser) {
+                        const user = JSON.parse(storedUser);
+                        const updatedUser = {
+                            ...user,
+                            companyName: companyName,
+                            taxName: updatedProviderData.taxName,
+                            email: updatedProfileData.email,
+                            phone: updatedProfileData.phone,
+                            ruc: updatedProviderData.ruc,
+                            direction: updatedProfileData.direction,
+                            documentNumber: updatedProfileData.documentNumber,
+                            documentType: updatedProfileData.documentType,
+                            firstName: updatedProfileData.firstName,
+                            lastName: updatedProfileData.lastName,
+                            profileIncomplete: undefined // ✅ Eliminar flag de perfil incompleto
+                        };
+                        
+                        localStorage.setItem('auth_user', JSON.stringify(updatedUser));
+                        console.log('✅ Usuario actualizado en localStorage - profileIncomplete eliminado');
+                    }
                     
                     this.isEditing = false;
                     this.profileForm.disable();
