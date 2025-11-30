@@ -33,41 +33,57 @@
   </div>
 
   <!-- Subscription Selector (when resident has multiple subscriptions) -->
-  <div *ngIf="!isLoading && selectedResident && allPredictions.length > 1" class="subscription-selector">
-    <h3>Select Subscription/Tank</h3>
+  <div *ngIf="!isLoading && selectedResident && allSubscriptions.length > 0" class="subscription-selector">
+    <h3>Select Subscription/Tank ({{ allSubscriptions.length }} total)</h3>
     <div class="subscription-grid">
+      <!-- Show all subscriptions from resident -->
       <div 
-        *ngFor="let pred of allPredictions" 
+        *ngFor="let subscription of allSubscriptions" 
         class="subscription-card"
-        [class.selected]="pred.subscriptionId === selectedSubscriptionId"
-        (click)="selectSubscription(pred)"
+        [class.selected]="subscription.id === selectedSubscriptionId"
+        [class.no-prediction]="!hasPrediction(subscription.id)"
+        (click)="selectOrGenerateSubscription(subscription)"
       >
         <div class="subscription-header">
-          <h4>{{ pred.subscriptionId ? 'Subscription #' + pred.subscriptionId : 'Prediction #' + pred.residentId }}</h4>
-          <span class="subscription-status" [class]="'status-' + (pred.status || 'active').toLowerCase()">
-            {{ pred.status || 'ACTIVE' }}
+          <h4>Subscription #{{ subscription.id }}</h4>
+          <span *ngIf="hasPrediction(subscription.id)" 
+                class="subscription-status" 
+                [class]="'status-' + (getPredictionForSubscription(subscription.id)?.status || 'active').toLowerCase()">
+            {{ getPredictionForSubscription(subscription.id)?.status || 'ACTIVE' }}
+          </span>
+          <span *ngIf="!hasPrediction(subscription.id)" class="subscription-status status-pending">
+            NO PREDICTION
           </span>
         </div>
-        <div class="subscription-stats">
+        
+        <!-- Show stats if prediction exists -->
+        <div *ngIf="hasPrediction(subscription.id)" class="subscription-stats">
           <div class="stat">
-            <span class="stat-value">{{ pred.currentWaterLevel | number:'1.0-0' }}L</span>
+            <span class="stat-value">{{ getPredictionForSubscription(subscription.id)?.currentWaterLevel | number:'1.0-0' }}L</span>
             <span class="stat-label">Current Level</span>
           </div>
           <div class="stat">
-            <span class="stat-value">{{ pred.predictedDaysUntilEmpty }}</span>
+            <span class="stat-value">{{ getPredictionForSubscription(subscription.id)?.predictedDaysUntilEmpty }}</span>
             <span class="stat-label">Days Left</span>
           </div>
           <div class="stat">
-            <span class="stat-value">{{ pred.predictedConsumptionPerDay | number:'1.0-1' }}</span>
+            <span class="stat-value">{{ getPredictionForSubscription(subscription.id)?.predictedConsumptionPerDay | number:'1.0-1' }}</span>
             <span class="stat-label">L/day</span>
           </div>
         </div>
+        
+        <!-- Show subscription info if no prediction -->
+        <div *ngIf="!hasPrediction(subscription.id)" class="subscription-info">
+          <p class="info-text">Device: #D{{ subscription.deviceId }}</p>
+          <p class="info-text">Tank Size: {{ subscription.waterTankSize || 'N/A' }}L</p>
+          <p class="info-text">Status: {{ subscription.status }}</p>
+        </div>
+        
         <button 
-          *ngIf="pred.subscriptionId"
           class="btn-generate-sub" 
-          (click)="generatePredictionForSubscription(pred.subscriptionId); $event.stopPropagation()"
+          (click)="generatePredictionForSubscription(subscription.id); $event.stopPropagation()"
         >
-          Regenerate
+          {{ hasPrediction(subscription.id) ? 'Regenerate' : 'Generate Prediction' }}
         </button>
       </div>
     </div>
