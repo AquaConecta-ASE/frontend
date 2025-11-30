@@ -18,6 +18,10 @@ export class AuthService extends BaseService<User> {
   private readonly TOKEN_KEY = 'auth_token';
   private readonly USER_KEY = 'auth_user';
   private currentUserSubject = new BehaviorSubject<User | null>(null);
+  
+  // Nuevo: Observable para notificar cuando el perfil completo está listo (con providerId)
+  private userProfileReadySubject = new BehaviorSubject<boolean>(false);
+  public userProfileReady$ = this.userProfileReadySubject.asObservable();
 
   public currentUser$ = this.currentUserSubject.asObservable();
   public isLoggedIn$ = this.currentUser$.pipe(map(user => !!user));
@@ -36,7 +40,34 @@ export class AuthService extends BaseService<User> {
   private loadStoredUser(): void {
     const storedUser = localStorage.getItem(this.USER_KEY);
     if (storedUser) {
-      this.currentUserSubject.next(JSON.parse(storedUser));
+      const user = JSON.parse(storedUser);
+      this.currentUserSubject.next(user);
+      
+      // Verificar si el usuario tiene providerId (perfil completo)
+      if (user.providerId && !user.providerId.toString().startsWith('auth0|')) {
+        console.log('✅ Perfil completo detectado en localStorage con providerId:', user.providerId);
+        this.userProfileReadySubject.next(true);
+      } else {
+        console.log('⚠️ Usuario sin providerId válido en localStorage');
+        this.userProfileReadySubject.next(false);
+      }
+    }
+  }
+  
+  /**
+   * Notifica que el perfil del usuario está completamente cargado
+   * Debe llamarse desde el callback después de obtener el perfil del BFF
+   */
+  public notifyUserProfileReady(): void {
+    console.log('🔔 AuthService: Notificando que el perfil está listo');
+    this.userProfileReadySubject.next(true);
+    
+    // También recargar el usuario actual desde localStorage
+    const storedUser = localStorage.getItem(this.USER_KEY);
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      this.currentUserSubject.next(user);
+      console.log('✅ Usuario actualizado en AuthService:', user);
     }
   }
 
