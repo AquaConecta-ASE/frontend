@@ -16,29 +16,18 @@ export class WaterRequestApiService extends BaseService<WaterRequestModel> {
 
   /**
    * Obtiene el perfil del proveedor autenticado
-   * Usa el providerId del localStorage para construir la URL correcta
+   * Usa el endpoint /providers/me/profile con el token JWT
+   * Devuelve: { id (providerId), userId, taxName, ruc, email, phone, etc. }
    */
   getProviderProfile(): Observable<any> {
-    const storedUser = localStorage.getItem('auth_user');
-    if (!storedUser) {
-      console.error('No user found in localStorage');
-      throw new Error('No user found in localStorage');
-    }
-    
-    const user = JSON.parse(storedUser);
-    const providerId = user.providerId || user.id;
-    
     console.log('=== GET PROVIDER PROFILE (Water Requests) ===');
-    console.log('User from localStorage:', user);
-    console.log('Provider ID to use:', providerId);
-    console.log('Endpoint:', `${this.basePath}providers/${providerId}/profiles`);
+    console.log('📡 Usando endpoint: /providers/me/profile');
+    console.log('🔑 Autenticación: Token JWT en headers');
     
-    if (!providerId || (typeof providerId === 'string' && providerId.includes('auth0'))) {
-      console.error('❌ Provider ID no válido:', providerId);
-      throw new Error('Invalid provider ID');
-    }
+    const endpoint = `${this.basePath}providers/me/profile`;
+    console.log('🌐 URL completa:', endpoint);
     
-    return this.http.get<any>(`${this.basePath}providers/${providerId}/profiles`, this.httpOptions);
+    return this.http.get<any>(endpoint, this.httpOptions);
   }
 
   getAllRequests(): Observable<WaterRequestModel[]> {

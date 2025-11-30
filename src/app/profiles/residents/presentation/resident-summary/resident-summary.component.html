@@ -34,6 +34,11 @@
           <td mat-cell *matCellDef="let row">#D{{ row.deviceId }}</td>
         </ng-container>
 
+        <!-- Water Tank Size Column -->
+        <ng-container matColumnDef="waterTankSize">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'water_tank_size' | translate }}</th>
+          <td mat-cell *matCellDef="let row">{{ row.waterTankSize || 'N/A' }} L</td>
+        </ng-container>
 
         <!-- Start Date Column -->
         <ng-container matColumnDef="startDate">

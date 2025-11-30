@@ -1,5 +1,5 @@
 import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HeaderContentComponent } from '../../components/header-content/header-content.component';
@@ -21,7 +21,7 @@ import { AuthService as Auth0Service } from '@auth0/auth0-angular';
   imports: [RouterLink, CommonModule, HeaderContentComponent, FormsModule, LanguageToggleComponent],
   templateUrl: './home.component.html',
   standalone: true,
-  styleUrl: './home.component.css'
+  styleUrls: ['./home.component.css', './profile-warning.css']
 })
 export class HomeComponent implements OnInit {
   title = 'AquaConecta';
@@ -33,15 +33,24 @@ export class HomeComponent implements OnInit {
   // Inject Auth0 service
   private auth0 = inject(Auth0Service);
 
-  // Dashboard metrics
-  waterRequestsCount: number = 0;
-  waterRequestsPending: number = 0;
-  reportsCount: number = 0;
-  reportsActive: number = 0;
-  residentsCount: number = 0;
-  deviceEventsCount: number = 0;
+  // Dashboard metrics - usar null para distinguir "cargando" de "0 real"
+  waterRequestsCount: number | null = null;
+  waterRequestsPending: number | null = null;
+  reportsCount: number | null = null;
+  reportsActive: number | null = null;
+  residentsCount: number | null = null;
+  deviceEventsCount: number | null = null;
   lastDeviceUpdate: string = 'Live';
   isAdmin: boolean = false;
+  
+  // Loading states
+  isLoadingWaterRequests: boolean = true;
+  isLoadingReports: boolean = true;
+  isLoadingResidents: boolean = true;
+  isLoadingDevices: boolean = true;
+  
+  // Profile warning
+  showProfileWarning: boolean = false;
 
   options = [
     { path: '/water-requests', name: 'Solicitud de Agua Potable' },
@@ -59,11 +68,52 @@ export class HomeComponent implements OnInit {
     private http: HttpClient,
     private languageService: LanguageService,
     private translationService: TranslationService,
-    private sensorDataService: DeviceDataService ) {
+    private sensorDataService: DeviceDataService,
+    private router: Router ) {
   }
   ngOnInit(): void {
     this.loadUsername();
-    this.loadDashboardData();
+    
+    // Verificar si el perfil está incompleto
+    const user = this.getStoredUser();
+    if (user?.profileIncomplete) {
+      console.log('⚠️ Perfil incompleto detectado');
+      // Mostrar notificación al usuario
+      this.showProfileIncompleteWarning();
+    }
+    
+    // Verificar si el providerId está disponible
+    const hasValidProviderId = user?.providerId && !user.providerId.toString().startsWith('auth0|');
+    
+    if (hasValidProviderId) {
+      console.log('✅ providerId disponible al cargar home:', user.providerId);
+      this.loadDashboardData();
+    } else {
+      console.log('⚠️ providerId NO disponible, esperando...');
+      
+      // Reintentar cada 500ms hasta que el providerId esté disponible (máximo 10 intentos = 5 segundos)
+      let attempts = 0;
+      const maxAttempts = 10;
+      
+      const checkInterval = setInterval(() => {
+        attempts++;
+        const currentUser = this.getStoredUser();
+        const isValid = currentUser?.providerId && !currentUser.providerId.toString().startsWith('auth0|');
+        
+        console.log(`🔄 Intento ${attempts}/${maxAttempts} - providerId:`, currentUser?.providerId);
+        
+        if (isValid) {
+          console.log('✅ providerId ahora disponible:', currentUser.providerId);
+          clearInterval(checkInterval);
+          this.loadDashboardData();
+        } else if (attempts >= maxAttempts) {
+          console.error('❌ providerId no disponible después de', maxAttempts, 'intentos');
+          clearInterval(checkInterval);
+          // Cargar de todos modos para mostrar la UI
+          this.loadDashboardData();
+        }
+      }, 500);
+    }
 
     // Load saved language
     const savedLanguage = localStorage.getItem('selected_language');
@@ -75,6 +125,42 @@ export class HomeComponent implements OnInit {
     this.languageService.currentLanguage$.subscribe(language => {
       this.selectedLanguage = language;
     });
+    
+    // 🔔 ESCUCHAR cuando el perfil esté completamente cargado
+    this.authService.userProfileReady$.subscribe(isReady => {
+      if (isReady) {
+        console.log('🔔 HomeComponent: Perfil listo detectado - recargando datos...');
+        this.loadUsername();
+        this.loadDashboardData();
+      }
+    });
+  }
+  
+  private showProfileIncompleteWarning(): void {
+    // Mostrar banner de advertencia solo si no se ha cerrado antes en esta sesión
+    const hasClosedWarning = sessionStorage.getItem('profile_warning_closed');
+    if (!hasClosedWarning) {
+      this.showProfileWarning = true;
+    }
+  }
+  
+  closeProfileWarning(): void {
+    this.showProfileWarning = false;
+    sessionStorage.setItem('profile_warning_closed', 'true');
+  }
+  
+  goToProfile(): void {
+    this.router.navigate(['/provider/1/profile']);
+  }
+  
+  private getStoredUser(): any {
+    const storedUser = localStorage.getItem('auth_user');
+    if (!storedUser) return null;
+    try {
+      return JSON.parse(storedUser);
+    } catch {
+      return null;
+    }
   }
 
   changeLanguage(event: any): void {
@@ -83,10 +169,7 @@ export class HomeComponent implements OnInit {
   }
 
   translate(key: string): string {
-    const result = this.translationService.translate(key);
-    const currentLang = this.languageService.getCurrentLanguage();
-    console.log(`Translating key: ${key}, Language: ${currentLang}, Result: ${result}`);
-    return result;
+    return this.translationService.translate(key);
   }
 
   private loadUsername(): void {
@@ -207,6 +290,9 @@ export class HomeComponent implements OnInit {
   }
 
   private loadWaterRequests(): void {
+    console.log('🌊 Iniciando carga de water requests...');
+    this.isLoadingWaterRequests = true;
+    
     // Si es admin, obtener todas las requests directamente
     if (this.isAdmin) {
       this.sensordataApiService.getAllRequests().subscribe({
@@ -220,26 +306,61 @@ export class HomeComponent implements OnInit {
             req.status === 'IN_PROGRESS' ||
             req.status === 'In Progress'
           ).length;
-          console.log(`Admin - Total requests: ${this.waterRequestsCount}, Pending: ${this.waterRequestsPending}`);
+          this.isLoadingWaterRequests = false;
+          console.log(`✅ Admin - Total requests: ${this.waterRequestsCount}, Pending: ${this.waterRequestsPending}`);
         },
         error: (error) => {
-          console.error('Error loading all water requests for admin:', error);
-          this.waterRequestsCount = 0;
-          this.waterRequestsPending = 0;
+          console.error('❌ Error loading all water requests for admin:', error);
+          this.isLoadingWaterRequests = false;
+          // No setear a 0, mantener null para indicar error
         }
       });
     } else {
       // Si es proveedor, obtener solo las requests de sus residentes
       this.sensordataApiService.getProviderProfile().subscribe({
         next: (providerProfile) => {
+          if (!providerProfile || !providerProfile.id) {
+            console.error('❌ Provider profile inválido:', providerProfile);
+            this.isLoadingWaterRequests = false;
+            return;
+          }
+          
           const authenticatedProviderId = providerProfile.id;
           console.log('=== HOME - WATER REQUESTS ===');
-          console.log('Provider ID autenticado:', authenticatedProviderId);
+          console.log('✅ Provider profile recibido:', providerProfile);
+          console.log('✅ Provider ID (providerId):', authenticatedProviderId);
+          console.log('✅ User ID (userId):', providerProfile.userId);
+          
+          // Actualizar localStorage con providerId y userId si no existen
+          const storedUser = localStorage.getItem('auth_user');
+          if (storedUser) {
+            const user = JSON.parse(storedUser);
+            if (!user.providerId || !user.userId) {
+              console.log('💾 Actualizando localStorage con providerId y userId del backend');
+              const updatedUser = {
+                ...user,
+                providerId: providerProfile.id,
+                userId: providerProfile.userId,
+                taxName: providerProfile.taxName,
+                ruc: providerProfile.ruc,
+                firstName: providerProfile.firstName,
+                lastName: providerProfile.lastName,
+                email: providerProfile.email,
+                phone: providerProfile.phone,
+                direction: providerProfile.direction,
+                documentNumber: providerProfile.documentNumber,
+                documentType: providerProfile.documentType,
+                companyName: providerProfile.taxName || providerProfile.firstName
+              };
+              localStorage.setItem('auth_user', JSON.stringify(updatedUser));
+              console.log('✅ localStorage actualizado con providerId:', updatedUser.providerId);
+            }
+          }
 
           // Obtener todas las requests y filtrar por providerId
           this.sensordataApiService.getAllRequests().subscribe({
             next: (allRequests) => {
-              console.log('Total requests del backend:', allRequests.length);
+              console.log('📋 Total requests del backend:', allRequests.length);
               console.log('Todas las requests:', allRequests);
               
               // Filtrar requests que pertenecen al proveedor
@@ -265,35 +386,73 @@ export class HomeComponent implements OnInit {
                 return isPending;
               }).length;
               
-              console.log(`Provider - Total requests: ${this.waterRequestsCount}, Pending: ${this.waterRequestsPending}`);
+              this.isLoadingWaterRequests = false;
+              console.log(`✅ Provider - Total requests: ${this.waterRequestsCount}, Pending: ${this.waterRequestsPending}`);
             },
             error: (error) => {
-              console.error('Error loading water requests for provider:', error);
-              this.waterRequestsCount = 0;
-              this.waterRequestsPending = 0;
+              console.error('❌ Error loading water requests for provider:', error);
+              this.isLoadingWaterRequests = false;
+              // No setear a 0, mantener null para indicar error
             }
           });
         },
         error: (error) => {
-          console.error('Error loading provider profile:', error);
-          this.waterRequestsCount = 0;
-          this.waterRequestsPending = 0;
+          console.error('❌ Error loading provider profile:', error);
+          this.isLoadingWaterRequests = false;
+          // No setear a 0, mantener null para indicar error
         }
       });
     }
   }
 
   private loadReports(): void {
+    console.log('📋 Iniciando carga de reports...');
+    this.isLoadingReports = true;
+    
     this.reportdataapiservice.getProviderProfile().subscribe({
       next: (providerProfile) => {
+        if (!providerProfile || !providerProfile.id) {
+          console.error('❌ Provider profile inválido:', providerProfile);
+          this.isLoadingReports = false;
+          return;
+        }
+        
         const authenticatedProviderId = providerProfile.id;
         console.log('=== HOME - REPORTS ===');
-        console.log('Provider ID autenticado:', authenticatedProviderId);
+        console.log('✅ Provider profile recibido:', providerProfile);
+        console.log('✅ Provider ID (providerId):', authenticatedProviderId);
+        console.log('✅ User ID (userId):', providerProfile.userId);
+        
+        // Actualizar localStorage con providerId y userId si no existen
+        const storedUser = localStorage.getItem('auth_user');
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          if (!user.providerId || !user.userId) {
+            console.log('💾 Actualizando localStorage con providerId y userId del backend');
+            const updatedUser = {
+              ...user,
+              providerId: providerProfile.id,
+              userId: providerProfile.userId,
+              taxName: providerProfile.taxName,
+              ruc: providerProfile.ruc,
+              firstName: providerProfile.firstName,
+              lastName: providerProfile.lastName,
+              email: providerProfile.email,
+              phone: providerProfile.phone,
+              direction: providerProfile.direction,
+              documentNumber: providerProfile.documentNumber,
+              documentType: providerProfile.documentType,
+              companyName: providerProfile.taxName || providerProfile.firstName
+            };
+            localStorage.setItem('auth_user', JSON.stringify(updatedUser));
+            console.log('✅ localStorage actualizado con providerId:', updatedUser.providerId);
+          }
+        }
 
         // Llamar al endpoint para obtener los reportes del proveedor
         this.reportdataapiservice.getReportsByProviderId(authenticatedProviderId).subscribe({
           next: (allReports) => {
-            console.log('Total reportes del backend:', allReports.length);
+            console.log('📋 Total reportes del backend:', allReports.length);
             console.log('Todos los reportes:', allReports);
 
             // Filtrar reportes del proveedor
@@ -320,41 +479,49 @@ export class HomeComponent implements OnInit {
               return isActive;
             }).length;
 
-            console.log(`📈 Home Stats - Total: ${this.reportsCount}, Activos: ${this.reportsActive}`);
+            this.isLoadingReports = false;
+            console.log(`✅ Home Stats - Total: ${this.reportsCount}, Activos: ${this.reportsActive}`);
           },
           error: (error) => {
             console.error('❌ Error loading issue-reports for provider:', error);
-            this.reportsCount = 0;
-            this.reportsActive = 0;
+            this.isLoadingReports = false;
+            // No setear a 0, mantener null para indicar error
           }
         });
       },
       error: (error) => {
         console.error('❌ Error loading provider profile:', error);
-        this.reportsCount = 0;
-        this.reportsActive = 0;
+        this.isLoadingReports = false;
+        // No setear a 0, mantener null para indicar error
       }
     });
   }
 
   private loadResidents(): void {
+    console.log('👥 Iniciando carga de residents...');
+    this.isLoadingResidents = true;
+    
     this.residentService.getResidents().subscribe({
       next: (residents) => {
         this.residentsCount = residents.length;
-        console.log(residents);
+        this.isLoadingResidents = false;
+        console.log('✅ Residents cargados:', residents.length);
         if(!residents.length){
           this.residentsCount = 0;
         }
       },
       error: (error) => {
-        console.error('Error loading residents:', error);
-        // Datos de ejemplo en caso de error
-        this.residentsCount = 156;
+        console.error('❌ Error loading residents:', error);
+        this.isLoadingResidents = false;
+        // No setear a 0, mantener null para indicar error
       }
     });
   }
 
   private loadDevices(): void {
+    console.log('📱 Iniciando carga de devices...');
+    this.isLoadingDevices = true;
+    
     // Obtener todos los datos de dispositivos del proveedor autenticado
     this.sensorDataService.getCompleteSensorData().subscribe({
       next: (sensorData) => {
@@ -369,14 +536,15 @@ export class HomeComponent implements OnInit {
 
         this.deviceEventsCount = totalEvents;
         this.lastDeviceUpdate = totalEvents > 0 ? 'Live' : 'No data';
+        this.isLoadingDevices = false;
 
-        console.log(`Total device events: ${this.deviceEventsCount}`);
+        console.log(`✅ Total device events: ${this.deviceEventsCount}`);
       },
       error: (error) => {
-        console.error('Error loading device events:', error);
-        // Valores por defecto en caso de error
-        this.deviceEventsCount = 0;
-        this.lastDeviceUpdate = 'No data';
+        console.error('❌ Error loading device events:', error);
+        this.isLoadingDevices = false;
+        // No setear a 0, mantener null para indicar error
+        this.lastDeviceUpdate = 'Error';
       }
     });
   }

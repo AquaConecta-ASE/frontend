@@ -19,6 +19,11 @@ export class TranslationService {
       'view_profile': 'View Profile',
       'sign_out': 'Sign Out',
       'language': 'Language',
+      
+      // Profile warning
+      'complete_your_profile': 'Complete Your Profile',
+      'profile_incomplete_message': 'Your profile was created with basic information. Please complete your details for a better experience.',
+      'complete_profile': 'Complete Profile',
 
       // Dashboard cards
       'water_requests': 'Water Requests',
@@ -221,6 +226,9 @@ export class TranslationService {
       'amount_to_pay': 'Amount to pay:',
       'payment_successful_creating': 'Payment Successful! Creating Resident...',
       'please_wait_message': 'Please wait, this may take a few moments.',
+      'create_resident': 'Create Resident',
+      'creating': 'Creating',
+      'creating_resident': 'Creating Resident',
 
       // Residents - List
       'residents_list_title': 'Residents',
@@ -426,6 +434,11 @@ export class TranslationService {
       'view_profile': 'Ver Perfil',
       'sign_out': 'Cerrar Sesión',
       'language': 'Idioma',
+      
+      // Profile warning
+      'complete_your_profile': 'Complete su Perfil',
+      'profile_incomplete_message': 'Su perfil fue creado con información básica. Por favor complete sus datos para una mejor experiencia.',
+      'complete_profile': 'Completar Perfil',
 
       // Dashboard cards
       'water_requests': 'Solicitudes de Agua',
@@ -628,6 +641,9 @@ export class TranslationService {
       'amount_to_pay': 'Monto a pagar:',
       'payment_successful_creating': '¡Pago Exitoso! Creando Residente...',
       'please_wait_message': 'Por favor espere, esto puede tomar unos momentos.',
+      'create_resident': 'Crear Residente',
+      'creating': 'Creando',
+      'creating_resident': 'Creando Residente',
 
       // Residents - List
       'residents_list_title': 'Residentes',

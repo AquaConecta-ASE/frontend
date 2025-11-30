@@ -1,9 +1,10 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthService } from '@auth0/auth0-angular';
+import { AuthService as Auth0Service } from '@auth0/auth0-angular';
+import { AuthService } from '../../../application/services/auth.service';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
-import { Observable, catchError, filter, of, switchMap, take, timeout, tap, map } from 'rxjs';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable, catchError, delay, filter, of, retry, switchMap, take, timeout, tap, map } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 
 @Component({
@@ -105,7 +106,8 @@ import { environment } from '../../../../../environments/environment';
   `]
 })
 export class CallbackComponent implements OnInit {
-  private auth0 = inject(AuthService);
+  private auth0Service = inject(Auth0Service);
+  private authService = inject(AuthService);
   private router = inject(Router);
   private http = inject(HttpClient);
 
@@ -120,7 +122,7 @@ export class CallbackComponent implements OnInit {
   private handleAuth0Callback(): void {
     console.log('=== INICIO AUTH0 CALLBACK ===');
     
-    this.auth0.isAuthenticated$.pipe(
+    this.auth0Service.isAuthenticated$.pipe(
       filter(isAuthenticated => isAuthenticated !== null),
       take(1),
       timeout(10000),
@@ -129,7 +131,7 @@ export class CallbackComponent implements OnInit {
           console.log('Usuario autenticado con Auth0');
           
           // Obtener el token de acceso
-          return this.auth0.getAccessTokenSilently().pipe(
+          return this.auth0Service.getAccessTokenSilently().pipe(
             take(1),
             tap(token => {
               console.log('=== TOKEN DEBUG ===');
@@ -149,7 +151,7 @@ export class CallbackComponent implements OnInit {
             }),
             switchMap(token => {
               // Obtener información del usuario de Auth0
-              return this.auth0.user$.pipe(
+              return this.auth0Service.user$.pipe(
                 take(1),
                 switchMap(user => {
                   if (user) {
@@ -201,29 +203,51 @@ export class CallbackComponent implements OnInit {
                     localStorage.setItem('user_role', userRole);
                     console.log('Usuario completo guardado en localStorage:', authUser);
                     
+                    // Dar un pequeño delay para asegurar que el token esté completamente propagado
+                    console.log('⏳ Esperando 800ms para asegurar que el token esté listo...');
+                    
                     // Intentar obtener el perfil del backend
-                    return this.getUserProfileFromBackend(token, user.email || '').pipe(
+                    return of(null).pipe(
+                      delay(800), // Delay adicional antes de llamar al BFF
+                      tap(() => console.log('✅ Delay completado, llamando al BFF...')),
+                      switchMap(() => this.getUserProfileFromBackend(token, user.email || '')),
+                      tap(profile => {
+                        console.log('📦 Respuesta del getUserProfileFromBackend:', profile);
+                        if (!profile) {
+                          console.error('❌❌❌ EL BFF DEVOLVIÓ NULL O UNDEFINED');
+                          console.error('Esto significa que hubo un error al llamar al BFF');
+                          console.error('Revisa los logs anteriores para ver el error exacto');
+                        }
+                      }),
                       switchMap(profile => {
                         if (profile) {
-                          // Perfil existe - actualizar usuario con IDs correctos
-                          console.log('✅ Perfil obtenido del backend:', profile);
-                          console.log('📋 Estructura del perfil recibido:');
-                          console.log('  - profile.id (Provider ID en respuesta):', profile.id);
-                          console.log('  - profile.userId (User ID):', profile.userId);
-                          console.log('  - profile.email:', profile.email);
-                          console.log('  - profile.taxName:', profile.taxName);
+                          console.log('');
+                          console.log('✅✅✅ PERFIL OBTENIDO - INICIANDO MAPEO ✅✅✅');
+                          console.log('📋 Datos RAW del backend:', JSON.stringify(profile, null, 2));
+                          console.log('');
+                          console.log('🆔 EXTRAYENDO IDs PARA LOCALSTORAGE:');
+                          console.log('  - profile.id → será providerId:', profile.id, '(tipo:', typeof profile.id, ')');
+                          console.log('  - profile.userId → será userId:', profile.userId, '(tipo:', typeof profile.userId, ')');
+                          console.log('');
+                          console.log('📋 EXTRAYENDO DATOS DEL PERFIL:');
+                          console.log('  - taxName:', profile.taxName);
+                          console.log('  - ruc:', profile.ruc);
+                          console.log('  - email:', profile.email);
+                          console.log('  - firstName:', profile.firstName);
+                          console.log('  - lastName:', profile.lastName);
+                          console.log('  - phone:', profile.phone);
+                          console.log('');
                           
-                          // IMPORTANTE: El endpoint /providers/{id}/profiles devuelve el PROVIDER, no el PROFILE
-                          // El profile.id que viene aquí es en realidad el providerId
-                          // Necesitamos obtener el profileId real si el backend lo devuelve
-                          
+                          console.log('🔨 Creando objeto updatedUser para localStorage...');
                           const updatedUser = {
                             ...authUser,
-                            id: profile.userId,  // ← ID de la tabla users (CRÍTICO para crear residentes)
-                            userId: profile.userId, // Explícito
-                            providerId: profile.id, // ← Este es el Provider ID (para GET /providers/{id}/profiles)
-                            profileId: profile.profileId || profile.id, // ← Profile ID real si existe en respuesta
-                            companyName: profile.taxName || profile.companyName || profile.firstName,
+                            // IDs CRÍTICOS del backend
+                            userId: profile.userId,        // ← ID de la tabla users (CRÍTICO)
+                            providerId: profile.id,        // ← ID de la tabla providers (el "id" en la respuesta)
+                            id: profile.userId,            // ← Alias de userId para compatibilidad
+                            
+                            // Datos del perfil
+                            companyName: profile.taxName || profile.firstName || '',
                             taxName: profile.taxName || '',
                             email: profile.email || authUser.email,
                             phone: profile.phone || '',
@@ -233,105 +257,147 @@ export class CallbackComponent implements OnInit {
                             documentType: profile.documentType || '',
                             firstName: profile.firstName || '',
                             lastName: profile.lastName || '',
-                            auth0Id: authUser.auth0Id  // Mantener referencia a Auth0
+                            
+                            // Mantener referencia a Auth0
+                            auth0Id: authUser.auth0Id
                           };
+                          
+                          console.log('');
+                          console.log('💾💾💾 GUARDANDO EN LOCALSTORAGE 💾💾💾');
+                          console.log('📝 Objeto updatedUser completo:');
+                          console.log(JSON.stringify(updatedUser, null, 2));
+                          console.log('');
+                          console.log('🆔 IDs que se guardarán:');
+                          console.log('  - userId:', updatedUser.userId);
+                          console.log('  - providerId:', updatedUser.providerId, '← PROVIDER ID DEL BACKEND');
+                          console.log('  - id:', updatedUser.id);
+                          console.log('');
                           
                           localStorage.setItem('auth_user', JSON.stringify(updatedUser));
-                          console.log('✅ Usuario actualizado correctamente:');
-                          console.log('  - user.id (User ID):', updatedUser.id);
-                          console.log('  - user.userId (User ID):', updatedUser.userId);
-                          console.log('  - user.providerId (Provider ID para endpoints):', updatedUser.providerId);
-                          console.log('  - user.profileId (Profile ID):', updatedUser.profileId);
-                          console.log('  - user.auth0Id (Auth0 referencia):', updatedUser.auth0Id);
+                          console.log('✅ Guardado completado en localStorage');
                           
-                          // Verificación de guardado
+                          console.log('');
+                          console.log('🔍 VERIFICANDO LO QUE SE GUARDÓ:');
                           const verify = JSON.parse(localStorage.getItem('auth_user') || '{}');
-                          console.log('🔍 Verificación - IDs guardados en localStorage:');
-                          console.log('  - userId:', verify.userId);
-                          console.log('  - providerId:', verify.providerId);
-                          console.log('  - profileId:', verify.profileId);
+                          console.log('📋 Contenido completo de localStorage:');
+                          console.log(JSON.stringify(verify, null, 2));
+                          console.log('');
+                          console.log('🆔 IDs FINALES EN LOCALSTORAGE:');
+                          console.log('  - verify.userId:', verify.userId, '(tipo:', typeof verify.userId, ')');
+                          console.log('  - verify.providerId:', verify.providerId, '(tipo:', typeof verify.providerId, ') ← CRÍTICO');
+                          console.log('  - verify.id:', verify.id, '(tipo:', typeof verify.id, ')');
+                          console.log('  - verify.email:', verify.email);
+                          console.log('  - verify.taxName:', verify.taxName);
+                          console.log('  - verify.ruc:', verify.ruc);
+                          console.log('');
                           
-                          return of({ user: authUser, profile, userRole });
+                          // ⚠️ VALIDACIÓN CRÍTICA
+                          if (!verify.providerId) {
+                            console.error('❌❌❌ CRÍTICO: providerId es undefined o null!');
+                            console.error('❌ providerId actual:', verify.providerId);
+                            console.error('❌ profile.id original era:', profile.id);
+                            console.error('❌ Algo falló en el mapeo o guardado');
+                          } else if (verify.providerId.toString().startsWith('auth0|')) {
+                            console.error('❌❌❌ CRÍTICO: providerId contiene auth0 ID!');
+                            console.error('❌ providerId actual:', verify.providerId);
+                            console.error('❌ Debería ser un número como:', profile.id);
+                          } else {
+                            console.log('✅✅✅ providerId guardado correctamente:', verify.providerId);
+                          }
+                          
+                          if (!verify.userId) {
+                            console.error('❌❌❌ CRÍTICO: userId es undefined o null!');
+                            console.error('❌ userId actual:', verify.userId);
+                          } else {
+                            console.log('✅✅✅ userId guardado correctamente:', verify.userId);
+                          }
+                          
+                          return of({ user: updatedUser, profile, userRole });
                         } else {
-                          // Perfil NO existe (404) - crear automáticamente
-                          console.log('⚠️ No se encontró perfil - Creando perfil automáticamente...');
+                          // 🆕 PERFIL NO EXISTE - CREAR AUTOMÁTICAMENTE
+                          console.log('⚠️ Perfil no encontrado - Creando perfil automáticamente...');
+                          console.log('📋 Datos disponibles de Auth0 para crear perfil:');
+                          console.log('  - email:', user.email);
+                          console.log('  - name:', user.name);
+                          console.log('  - nickname:', user.nickname);
                           
-                          const companyName = authUser.name || 'Nuevo Usuario';
-                          
+                          // Crear perfil con datos básicos de Auth0
                           const newProfileData = {
-                            firstName: companyName,
-                            lastName: companyName,
-                            email: authUser.email,
-                            direction: '',
-                            documentNumber: '',
-                            documentType: 'RUC',
-                            phone: ''
+                            firstName: user.name || user.nickname || 'Provider',
+                            lastName: user.name || user.nickname || 'User',
+                            email: user.email || '',
+                            direction: '',          // Vacío - el provider lo llenará después
+                            documentNumber: '',     // Vacío - el provider lo llenará después
+                            documentType: 'RUC',    // Por defecto RUC
+                            phone: ''               // Vacío - el provider lo llenará después
                           };
                           
-                          console.log('📤 Datos del nuevo perfil:', newProfileData);
+                          console.log('📤 Creando perfil con datos:', JSON.stringify(newProfileData, null, 2));
                           
                           return this.createProfileInBackend(newProfileData).pipe(
                             tap((createdProfile: any) => {
-                              console.log('✅ Perfil creado exitosamente en callback:', createdProfile);
-                              console.log('📋 Estructura del perfil creado:');
-                              console.log('  Respuesta completa:', JSON.stringify(createdProfile, null, 2));
-                              console.log('  - createdProfile.id (Profile ID):', createdProfile.id);
-                              console.log('  - createdProfile.userId (User ID):', createdProfile.userId);
-                              console.log('  - createdProfile.profileId:', createdProfile.profileId);
-                              console.log('  - createdProfile.providerId (Provider ID):', createdProfile.providerId);
+                              console.log('✅ Perfil creado automáticamente');
+                              console.log('📋 Respuesta del backend:', JSON.stringify(createdProfile, null, 2));
                               
-                              // IMPORTANTE: El backend devuelve diferentes IDs
-                              // - userId: ID de tabla users (necesario para crear residentes)
-                              // - id: ID de tabla profiles
-                              // - providerId: ID de tabla providers (para GET /providers/{id}/profiles)
+                              // Guardar datos del perfil creado en localStorage
+                              // NO intentar obtener del BFF todavía (puede dar error 500)
                               const updatedUser = {
                                 ...authUser,
-                                id: createdProfile.userId,  // ← ID de la tabla users (CRÍTICO)
-                                userId: createdProfile.userId, // Explícito
-                                profileId: createdProfile.id, // ID de la tabla profiles
-                                providerId: createdProfile.providerId || createdProfile.id, // ID de tabla providers
-                                companyName: createdProfile.firstName || createdProfile.taxName || companyName,
-                                taxName: createdProfile.taxName || '',
-                                email: createdProfile.email || authUser.email,
-                                phone: createdProfile.phone || '',
-                                ruc: createdProfile.ruc || '',
-                                direction: createdProfile.direction || '',
-                                documentNumber: createdProfile.documentNumber || '',
-                                documentType: createdProfile.documentType || '',
-                                firstName: createdProfile.firstName || '',
-                                lastName: createdProfile.lastName || '',
-                                auth0Id: authUser.auth0Id
+                                // Guardar lo que el backend devolvió
+                                userId: createdProfile.userId || authUser.id,
+                                providerId: createdProfile.providerId || null,
+                                id: createdProfile.userId || authUser.id,
+                                profileId: createdProfile.id,
+                                // Datos del perfil
+                                companyName: user.name || '',
+                                firstName: createdProfile.firstName || user.name || '',
+                                lastName: createdProfile.lastName || user.name || '',
+                                email: createdProfile.email || user.email || '',
+                                phone: '',
+                                ruc: '',
+                                direction: '',
+                                documentNumber: '',
+                                documentType: 'RUC',
+                                taxName: '',
+                                auth0Id: authUser.auth0Id,
+                                // Marcar que el perfil está incompleto
+                                profileIncomplete: true
                               };
                               
                               localStorage.setItem('auth_user', JSON.stringify(updatedUser));
-                              console.log('✅ Usuario actualizado con perfil nuevo:');
-                              console.log('  - user.id (User ID):', updatedUser.id);
-                              console.log('  - user.userId (User ID):', updatedUser.userId);
-                              console.log('  - user.profileId (Profile ID):', updatedUser.profileId);
-                              console.log('  - user.providerId (Provider ID):', updatedUser.providerId);
-                              console.log('  - user.auth0Id:', updatedUser.auth0Id);
-                              
-                              // Verificar guardado
-                              const verify = JSON.parse(localStorage.getItem('auth_user') || '{}');
-                              console.log('🔍 Verificación - Usuario guardado:');
-                              console.log('  - userId:', verify.userId);
-                              console.log('  - profileId:', verify.profileId);
-                              console.log('  - providerId:', verify.providerId);
+                              console.log('✅ Usuario guardado en localStorage');
+                              console.log('  - userId:', updatedUser.userId);
+                              console.log('  - providerId:', updatedUser.providerId || 'null (se obtendrá después)');
+                              console.log('  - profileId:', updatedUser.profileId);
+                              console.log('  - email:', updatedUser.email);
+                              console.log('  - profileIncomplete:', updatedUser.profileIncomplete);
                             }),
-                            map((createdProfile: any) => ({ user: authUser, profile: createdProfile, userRole })),
+                            map((createdProfile: any) => {
+                              const updatedUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
+                              return { user: updatedUser, profile: createdProfile, userRole };
+                            }),
                             catchError(createError => {
                               console.error('❌ Error al crear perfil automáticamente:', createError);
                               console.error('Error completo:', createError);
-                              // Continuar sin perfil si falla la creación
+                              // Si falla la creación, continuar con usuario básico
                               return of({ user: authUser, profile: null, userRole });
                             })
                           );
                         }
                       }),
                       catchError(error => {
-                        console.warn('Error general al obtener/crear perfil:', error);
-                        // Si falla, continuar con la info de Auth0
-                        return of({ user: authUser, profile: null, userRole });
+                        console.warn('⚠️ Error general al obtener/crear perfil:', error);
+                        console.warn('⚠️ NO sobrescribir localStorage - mantener lo que ya existe');
+                        
+                        // IMPORTANTE: NO devolver authUser porque NO tiene providerId
+                        // En su lugar, leer lo que esté en localStorage (puede tener providerId de un intento anterior)
+                        const currentUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
+                        
+                        console.log('📋 Usuario actual en localStorage:', currentUser);
+                        console.log('   - providerId actual:', currentUser.providerId);
+                        
+                        // Si falla, continuar SIN sobrescribir el usuario
+                        return of({ user: currentUser, profile: null, userRole });
                       })
                     );
                   } else {
@@ -357,11 +423,56 @@ export class CallbackComponent implements OnInit {
               
               console.log('Ruta de redirección final:', targetRoute);
               
-              // Navigate after a brief delay
-              setTimeout(() => {
-                this.router.navigate([targetRoute]);
-                console.log('=== FIN AUTH0 CALLBACK ===');
-              }, 1000);
+              // Verificación final antes de navegar
+              const finalUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
+              console.log('');
+              console.log('═══════════════════════════════════════════════');
+              console.log('🔍 VERIFICACIÓN FINAL ANTES DE NAVEGAR');
+              console.log('═══════════════════════════════════════════════');
+              console.log('📋 Usuario en localStorage:', JSON.stringify(finalUser, null, 2));
+              console.log('🆔 IDs críticos:');
+              console.log('   - userId:', finalUser.userId, '(tipo:', typeof finalUser.userId, ')');
+              console.log('   - providerId:', finalUser.providerId, '(tipo:', typeof finalUser.providerId, ')');
+              console.log('   - auth0Id:', finalUser.auth0Id);
+              
+              if (!finalUser.providerId || finalUser.providerId.toString().startsWith('auth0|')) {
+                console.error('');
+                console.error('❌❌❌ ALERTA CRÍTICA ❌❌❌');
+                console.error('providerId NO está correcto antes de navegar!');
+                console.error('providerId actual:', finalUser.providerId);
+                console.error('Esto causará errores en la página siguiente');
+                console.error('═══════════════════════════════════════════════');
+                
+                // Navegar sin reload
+                setTimeout(() => {
+                  console.log('🚀 Navegando a:', targetRoute);
+                  this.router.navigate([targetRoute]);
+                  console.log('=== FIN AUTH0 CALLBACK ===');
+                }, 1000);
+              } else {
+                console.log('');
+                console.log('✅✅✅ TODO CORRECTO ✅✅✅');
+                console.log('providerId:', finalUser.providerId);
+                console.log('userId:', finalUser.userId);
+                console.log('═══════════════════════════════════════════════');
+                
+                // Navegar y hacer refresh automático de la página
+                console.log('🔄 Marcando para hacer refresh después de navegar...');
+                sessionStorage.setItem('needs_refresh_after_login', 'true');
+                
+                setTimeout(() => {
+                  console.log('🚀 Navegando a:', targetRoute);
+                  this.router.navigate([targetRoute]).then(() => {
+                    // Verificar si necesita refresh
+                    if (sessionStorage.getItem('needs_refresh_after_login') === 'true') {
+                      console.log('🔄 Haciendo refresh automático de la página...');
+                      sessionStorage.removeItem('needs_refresh_after_login');
+                      window.location.reload();
+                    }
+                  });
+                  console.log('=== FIN AUTH0 CALLBACK ===');
+                }, 1000);
+              }
               
               return of(null);
             })
@@ -381,28 +492,90 @@ export class CallbackComponent implements OnInit {
   }
 
   private getUserProfileFromBackend(token: string, email: string): Observable<any> {
-    console.log('Consultando perfil del backend...');
+    console.log('');
+    console.log('🔍🔍🔍 CONSULTANDO PERFIL DEL BACKEND 🔍🔍🔍');
+    console.log('📧 Email del usuario:', email);
+    console.log('🔑 Token disponible:', token ? 'Sí' : 'No');
+    if (token) {
+      console.log('🔑 Token length:', token.length);
+      console.log('🔑 Token preview:', token.substring(0, 30) + '...');
+    }
     
-    // Usar el nuevo endpoint /me/profile que usa el token JWT
     const profileUrl = `${environment.serverBasePath}providers/me/profile`;
+    console.log('📡 URL COMPLETA del endpoint:', profileUrl);
+    console.log('📡 Este endpoint devuelve:');
+    console.log('   - id (providerId)');
+    console.log('   - userId');
+    console.log('   - taxName, ruc, firstName, lastName, email, phone, etc.');
     
-    return this.http.get<any>(profileUrl).pipe(
+    // Agregar headers explícitos con el token
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    });
+    
+    console.log('📤 Headers enviados:', {
+      'Authorization': token ? `Bearer ${token.substring(0, 20)}...` : 'No token',
+      'Content-Type': 'application/json'
+    });
+    
+    // Estrategia de retry mejorada para evitar race condition en primer login
+    return of(null).pipe(
+      delay(1000), // Aumentar delay inicial a 1 segundo (antes era 500ms)
+      tap(() => console.log('⏰ Delay completado, haciendo petición al BFF...')),
+      switchMap(() => this.http.get<any>(profileUrl, { headers })),
+      retry({
+        count: 4, // Aumentar a 4 intentos (antes eran 3)
+        delay: (error, retryCount) => {
+          console.log(`⚠️ Intento ${retryCount} falló - Error ${error.status}: ${error.message}`);
+          console.log(`🔄 Reintentando en ${1.5 * retryCount}s...`);
+          
+          // Reintentar en errores de red (0), CORS, o servidor (500+)
+          if (error.status === 0 || error.status >= 500) {
+            // Delay progresivo: 1.5s, 3s, 4.5s
+            return of(null).pipe(delay(1500 * retryCount));
+          }
+          
+          // Para otros errores (401, 403, 404), no reintentar
+          throw error;
+        }
+      }),
       tap(profile => {
-        console.log('Perfil recibido del backend:', profile);
-        console.log('ID de la base de datos:', profile.id);
+        console.log('');
+        console.log('✅✅✅ PERFIL RECIBIDO DEL BACKEND ✅✅✅');
+        console.log('📦 Respuesta completa:', profile);
+        console.log('📦 JSON:', JSON.stringify(profile, null, 2));
+        console.log('');
+        console.log('🆔 IDs EXTRAÍDOS:');
+        console.log('  - profile.id (PROVIDER ID):', profile.id, '(tipo:', typeof profile.id, ')');
+        console.log('  - profile.userId (USER ID):', profile.userId, '(tipo:', typeof profile.userId, ')');
+        console.log('');
+        console.log('📋 DATOS DEL PERFIL:');
+        console.log('  - taxName:', profile.taxName);
+        console.log('  - ruc:', profile.ruc);
+        console.log('  - firstName:', profile.firstName);
+        console.log('  - lastName:', profile.lastName);
+        console.log('  - email:', profile.email);
+        console.log('  - phone:', profile.phone);
+        console.log('  - direction:', profile.direction);
+        console.log('  - documentNumber:', profile.documentNumber);
+        console.log('  - documentType:', profile.documentType);
+        console.log('');
       }),
       catchError(error => {
-        console.warn('No se pudo obtener perfil del backend:', error);
-        console.warn('Código de error:', error.status);
-        console.warn('Mensaje:', error.message);
+        console.error('❌ Error al obtener perfil del BFF:', error);
+        console.error('  - Status:', error.status);
+        console.error('  - Message:', error.message);
+        console.error('  - Error completo:', error);
         
         // Si es 404, devolver null (perfil no existe)
         if (error.status === 404) {
-          console.log('Perfil no encontrado (404) - necesita ser creado');
+          console.log('📝 Perfil no encontrado (404) - necesita ser creado');
           return of(null);
         }
         
-        // Para otros errores, también devolver null
+        // Para otros errores, también devolver null y continuar
+        console.warn('⚠️ Continuando sin perfil del backend');
         return of(null);
       })
     );

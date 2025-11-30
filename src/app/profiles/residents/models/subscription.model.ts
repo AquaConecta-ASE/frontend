@@ -4,4 +4,5 @@ export interface SubscriptionModel {
   endDate: string;
   status: string;
   deviceId: number;
+  waterTankSize?: number;
 }

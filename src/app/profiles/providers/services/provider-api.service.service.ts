@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, throwError } from 'rxjs';
+import { Observable, tap, throwError } from 'rxjs';
 import { Provider } from '../model/provider.model';
 import { environment } from '../../../../environments/environment';
 
@@ -22,43 +22,52 @@ export class ProviderApiServiceService {
 
   /**
    * Obtiene el perfil del usuario autenticado
-   * Usa el endpoint /providers/{providerId}/profiles
-   * IMPORTANTE: Necesita el providerId (no el profileId ni el userId)
+   * Usa el endpoint /providers/me/profile que devuelve todos los datos del provider
+   * incluyendo el providerId (que es el campo 'id' de la respuesta)
    */
   getMyProfile(): Observable<any> {
-    const storedUser = localStorage.getItem('auth_user');
-    if (!storedUser) {
-      console.log('No user found in localStorage');
-      return throwError(() => new Error('No user found in localStorage'));
-    }
-    
-    const user = JSON.parse(storedUser);
-    
     console.log('=== GET MY PROFILE ===');
-    console.log('User from localStorage:', user);
-    console.log('Available IDs:');
-    console.log('  - user.userId:', user.userId);
-    console.log('  - user.providerId:', user.providerId, '← Este se usa para /providers/{id}/profiles');
-    console.log('  - user.profileId:', user.profileId);
-    console.log('  - user.id:', user.id);
-    console.log('  - user.auth0Id:', user.auth0Id);
     
-    // IMPORTANTE: El endpoint es /providers/{providerId}/profiles
-    // Necesitamos el providerId (ID de la tabla providers), NO el profileId
-    let providerIdToUse = user.providerId || user.id;
-    
-    // Validar que NO sea un ID de Auth0 (comienza con "auth0|")
-    if (!providerIdToUse || (typeof providerIdToUse === 'string' && providerIdToUse.includes('auth0'))) {
-      console.error('❌ El providerId no es válido:', providerIdToUse);
-      console.error('El usuario debe completar su perfil primero');
-      return throwError(() => new Error('No valid provider ID found. Profile may not have been created yet.'));
+    // Verificar si tenemos el token de Auth0
+    const storedUser = localStorage.getItem('auth_user');
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      console.log('📋 User en localStorage:', {
+        auth0Id: user.auth0Id,
+        userId: user.userId,
+        providerId: user.providerId,
+        email: user.email
+      });
     }
     
-    console.log('✅ Provider ID a usar:', providerIdToUse);
-    const endpoint = `${this.basePath}${this.resourceEndpoint}/${providerIdToUse}/profiles`;
-    console.log('📡 Endpoint:', endpoint);
+    const endpoint = `${this.basePath}${this.resourceEndpoint}/me/profile`;
+    console.log('📡 Endpoint completo:', endpoint);
+    console.log('🔑 ¿Requiere autenticación con Auth0 token?', 'Sí (JWT en headers)');
     
-    return this.http.get<any>(endpoint);
+    return this.http.get<any>(endpoint).pipe(
+      tap(response => {
+        console.log('✅✅✅ RESPUESTA COMPLETA DEL BACKEND ✅✅✅');
+        console.log('📦 Response RAW:', response);
+        console.log('📦 Response JSON:', JSON.stringify(response, null, 2));
+        console.log('');
+        console.log('📋 Estructura de campos recibidos:');
+        console.log('  - id (providerId):', response.id, '← ESTE ES EL PROVIDER ID');
+        console.log('  - taxName:', response.taxName);
+        console.log('  - ruc:', response.ruc);
+        console.log('  - userId:', response.userId);
+        console.log('  - firstName:', response.firstName);
+        console.log('  - lastName:', response.lastName);
+        console.log('  - email:', response.email);
+        console.log('  - direction:', response.direction);
+        console.log('  - documentNumber:', response.documentNumber);
+        console.log('  - documentType:', response.documentType);
+        console.log('  - phone:', response.phone);
+        console.log('');
+        console.log('🔍 Tipos de datos:');
+        console.log('  - typeof id:', typeof response.id);
+        console.log('  - typeof userId:', typeof response.userId);
+      })
+    );
   }
 
   /**
@@ -108,9 +117,13 @@ export class ProviderApiServiceService {
       return throwError(() => new Error('No user found in localStorage'));
     }
     const user = JSON.parse(storedUser);
-    const providerId = user.id || user.providerId;
+    // ✅ CORRECTO: Usar providerId, no user.id
+    const providerId = user.providerId;
     
     if (!providerId) {
+      console.error('❌ No provider ID found in user data');
+      console.error('📋 User data:', JSON.stringify(user, null, 2));
+      console.error('💡 El BFF debe devolver providerId en /providers/me/profile');
       return throwError(() => new Error('No provider ID found in user data'));
     }
     
@@ -141,8 +154,11 @@ export class ProviderApiServiceService {
       return throwError(() => new Error('No user found in localStorage'));
     }
     const user = JSON.parse(storedUser);
+    console.log('⚠️ DEPRECATED: Use getMyProfile() instead');
     console.log('Getting profile for user:', user);
-    return this.http.get<any>(`${this.basePath}${this.resourceEndpoint}/${user.id}/profiles`);
+    // ✅ CORRECTO: Usar providerId, no user.id
+    const providerId = user.providerId;
+    return this.http.get<any>(`${this.basePath}${this.resourceEndpoint}/${providerId}/profiles`);
   }
 
   getProviderById(id: number): Observable<Provider> {

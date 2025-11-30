@@ -28,7 +28,7 @@ export const appConfig: ApplicationConfig = {
         allowedList: [
           // Patrón general que captura tanto Azure como localhost
           {
-            uri: 'https://aquaconecta-gch4brewcpb5ewhc.centralus-01.azurewebsites.net/api/v1/*',
+            uri: 'https://aquaconecta-web-bff-gateway.azurewebsites.net/api/web/*',
             tokenOptions: {
               authorizationParams: {
                 audience: 'https://aquaconecta-api',
@@ -45,9 +45,9 @@ export const appConfig: ApplicationConfig = {
               }
             }
           },
-          // Alternativas sin versión
+          // BFF (Backend-for-Frontend)
           {
-            uri: 'http://localhost:8080/api/*',
+            uri: 'http://localhost:8081/api/web/*',
             tokenOptions: {
               authorizationParams: {
                 audience: 'https://aquaconecta-api',

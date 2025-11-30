@@ -25,6 +25,9 @@ export class PredictiveAnalyticsComponent implements OnInit, AfterViewInit, OnDe
   allPredictions: Prediction[] = []; // All predictions for selected resident
   selectedPrediction: Prediction | null = null; // Currently selected subscription prediction
   
+  // NEW: All subscriptions for selected resident (with or without predictions)
+  allSubscriptions: any[] = []; // All subscriptions from resident
+  
   // Consumption history (for additional charts/insights)
   consumptionHistory: ConsumptionRecord[] = [];
   
@@ -130,6 +133,11 @@ export class PredictiveAnalyticsComponent implements OnInit, AfterViewInit, OnDe
     this.selectedResident = resident;
     this.selectedResidentId = resident.resident.id;
     this.showResidentSelector = false;
+    
+    // Store all subscriptions for this resident
+    this.allSubscriptions = resident.subscriptions || [];
+    console.log('📋 Todas las suscripciones del residente:', this.allSubscriptions);
+    
     this.loadAllPredictionsForResident(resident.resident.id);
   }
 
@@ -389,6 +397,33 @@ export class PredictiveAnalyticsComponent implements OnInit, AfterViewInit, OnDe
     const firstName = resident.resident.firstName || '';
     const lastName = resident.resident.lastName || '';
     return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
+  }
+
+  /**
+   * Get prediction for a specific subscription ID
+   */
+  getPredictionForSubscription(subscriptionId: number): Prediction | null {
+    return this.allPredictions.find(p => p.subscriptionId === subscriptionId) || null;
+  }
+
+  /**
+   * Check if a subscription has a prediction
+   */
+  hasPrediction(subscriptionId: number): boolean {
+    return this.allPredictions.some(p => p.subscriptionId === subscriptionId);
+  }
+
+  /**
+   * Select a subscription or show message if no prediction exists
+   */
+  selectOrGenerateSubscription(subscription: any): void {
+    const prediction = this.getPredictionForSubscription(subscription.id);
+    if (prediction) {
+      this.selectSubscription(prediction);
+    } else {
+      console.log('No prediction available for subscription', subscription.id);
+      // Optionally, auto-generate or show a message
+    }
   }
 
   formatConfidence(p: Prediction): string {

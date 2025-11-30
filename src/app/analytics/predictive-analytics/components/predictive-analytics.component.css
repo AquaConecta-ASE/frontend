@@ -583,6 +583,35 @@
 	box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
 }
 
+.subscription-card.no-prediction {
+	border-color: #fbbf24;
+	background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+}
+
+.subscription-card.no-prediction:hover {
+	border-color: #f59e0b;
+	box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+}
+
+.subscription-info {
+	padding: 0.75rem;
+	background: rgba(255, 255, 255, 0.5);
+	border-radius: 8px;
+	margin-bottom: 1rem;
+}
+
+.subscription-info .info-text {
+	margin: 0.25rem 0;
+	font-size: 0.9rem;
+	color: #64748b;
+	font-family: 'Inter-Regular', sans-serif;
+}
+
+.status-pending {
+	background: #fef3c7;
+	color: #92400e;
+}
+
 .subscription-header {
 	display: flex;
 	justify-content: space-between;
