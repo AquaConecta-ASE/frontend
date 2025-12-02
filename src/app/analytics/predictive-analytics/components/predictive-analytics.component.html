@@ -3,7 +3,7 @@
 <div class="pa-container">
   <div class="pa-header">
     <h1>Predictive Analytics</h1>
-    <p>Predicciones de consumo y recomendaciones de reabastecimiento para tus residentes.</p>
+    <p>Predicciones de consumo para tus residentes.</p>
   </div>
 
   <!-- Resident Selection Section -->
@@ -142,12 +142,14 @@
         <h3>Total 7-Day Consumption</h3>
         <p class="value">{{ selectedPrediction.totalPredictedConsumption7Days | number:'1.0-2' }} L</p>
       </div>
+      <!--
       <div class="card">
         <h3>Recommended Action</h3>
         <p class="badge badge-{{ selectedPrediction.recommendedAction || 'none' }}">
           {{ selectedPrediction.recommendedAction || 'none' }}
         </p>
       </div>
+      -->
     </div>
 
     <!-- Chart -->
