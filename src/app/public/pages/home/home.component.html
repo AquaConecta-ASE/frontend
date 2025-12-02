@@ -63,12 +63,17 @@
             <div class="status-badge status-pending" *ngIf="!isLoadingWaterRequests">
               {{waterRequestsPending ?? '—'}} {{ translate('pending') }}
             </div>
-            <div class="status-badge status-pending" *ngIf="isLoadingWaterRequests">⏳ ...</div>
+            <div class="status-badge status-pending" *ngIf="isLoadingWaterRequests">
+              <span class="loading-spinner"></span>
+              <span>{{ translate('loading') }}</span>
+            </div>
             <a class="card-action">{{ translate('view_all_requests') }}</a>
           </div>
           <div class="card-metric">
             <span class="card-number" *ngIf="!isLoadingWaterRequests">{{waterRequestsCount ?? '—'}}</span>
-            <span class="card-number" *ngIf="isLoadingWaterRequests">⏳</span>
+            <span class="card-number" *ngIf="isLoadingWaterRequests">
+              <span class="loading-spinner-large"></span>
+            </span>
             <span class="card-label">{{ translate('total_requests') }}</span>
           </div>
         </div>
@@ -87,12 +92,17 @@
             <div class="status-badge status-active" *ngIf="!isLoadingReports">
               {{reportsActive ?? '—'}} {{ translate('active') }}
             </div>
-            <div class="status-badge status-active" *ngIf="isLoadingReports">⏳ ...</div>
+            <div class="status-badge status-active" *ngIf="isLoadingReports">
+              <span class="loading-spinner"></span>
+              <span>{{ translate('loading') }}</span>
+            </div>
             <a class="card-action">{{ translate('view_all_reports') }}</a>
           </div>
           <div class="card-metric">
             <span class="card-number" *ngIf="!isLoadingReports">{{reportsCount ?? '—'}}</span>
-            <span class="card-number" *ngIf="isLoadingReports">⏳</span>
+            <span class="card-number" *ngIf="isLoadingReports">
+              <span class="loading-spinner-large"></span>
+            </span>
             <span class="card-label">{{ translate('total_reports') }}</span>
           </div>
         </div>
@@ -113,7 +123,9 @@
           </div>
           <div class="card-metric">
             <span class="card-number" *ngIf="!isLoadingResidents">{{residentsCount ?? '—'}}</span>
-            <span class="card-number" *ngIf="isLoadingResidents">⏳</span>
+            <span class="card-number" *ngIf="isLoadingResidents">
+              <span class="loading-spinner-large"></span>
+            </span>
             <span class="card-label">{{ translate('registered') }}</span>
           </div>
         </div>
@@ -134,7 +146,9 @@
           </div>
           <div class="card-metric">
             <span class="card-number" *ngIf="!isLoadingDevices">{{deviceEventsCount ?? '—'}}</span>
-            <span class="card-number" *ngIf="isLoadingDevices">⏳</span>
+            <span class="card-number" *ngIf="isLoadingDevices">
+              <span class="loading-spinner-large"></span>
+            </span>
             <span class="card-label">{{ translate('device_events') }}</span>
           </div>
         </div>

@@ -29,6 +29,7 @@ export class TranslationService {
       'water_requests': 'Water Requests',
       'active_water_requests': 'Active water supply water-requests awaiting approval and processing',
       'pending': 'Pending',
+      'loading': 'Loading...',
       'total_requests': 'Total Requests',
       'view_all_requests': 'View all water-requests',
 
@@ -444,6 +445,7 @@ export class TranslationService {
       'water_requests': 'Solicitudes de Agua',
       'active_water_requests': 'Solicitudes activas de suministro de agua pendientes de aprobación y procesamiento',
       'pending': 'Pendiente',
+      'loading': 'Cargando...',
       'total_requests': 'Total de Solicitudes',
       'view_all_requests': 'Ver todas las solicitudes',
 
